@@ -2,10 +2,10 @@
 	import { fadeOut, fadeIn } from '$lib/utils'
 </script>
 
-<section in:fadeIn out:fadeOut>
+<section in:fadeIn out:fadeOut draggable="false">
 	<h1>
-		{#each 'Hello' as letter}
-			<div class="letter">{letter}</div>
+		{#each 'threets' as letter}
+			<span class="letter">{letter}</span>
 		{/each}
 	</h1>
 </section>
@@ -17,7 +17,10 @@
 		perspective-origin: 50% 50%;
 
 		width: fit-content;
+		width: 8rem;
 		margin-top: 5rem;
+
+		user-select: none;
 	}
 
 	h1 {
@@ -28,11 +31,6 @@
 
 		font-size: var(--font-xl);
 		font-family: var(--font-a);
-		font-variation-settings:
-			'wght' 900,
-			'wdth' 125;
-
-		min-width: 7rem;
 	}
 
 	.letter {
@@ -55,7 +53,7 @@
 		@return $i * 0.15s;
 	}
 
-	@for $j from 1 through 5 {
+	@for $j from 1 through 7 {
 		.letter:nth-child(#{$j}) {
 			animation-delay: offset($j);
 			animation-duration: 1.5s - offset($j);
@@ -67,15 +65,15 @@
 			opacity: 0;
 			transform: translateX(1rem);
 			font-variation-settings:
-				'wght' 100,
+				'wght' 900,
 				'wdth' 125;
 		}
 		100% {
 			opacity: 1;
 			transform: translateX(0);
 			font-variation-settings:
-				'wght' 500,
-				'wdth' 100;
+				'wght' 100,
+				'wdth' 125;
 		}
 	}
 </style>

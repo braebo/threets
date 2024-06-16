@@ -10,7 +10,6 @@ declare global {
 		interface PageData {
 			theme: 'light' | 'dark' | 'system'
 		}
-		// interface Platform {}
 	}
 }
 
