@@ -1,0 +1,43 @@
+{
+	"name": "threets",
+	"version": "0.1.0",
+	"description": "A typescript library for 3D WebGL graphics.",
+	"homepage": "https://threets.braebo.dev",
+	"keywords": [
+		"webgl",
+		"shaders",
+		"typescript",
+		"javascript",
+		"animation",
+		"glsl",
+		"jsr"
+	],
+	"license": "MIT",
+	"author": "braebo",
+	"type": "module",
+	"files": [
+		"dist",
+		"README.md",
+		"LICENSE"
+	],
+	"scripts": {
+		"dev": "cd www && pnpm dev",
+		"build": "tsup",
+		"build:site": "cd www && pnpm build",
+		"release": "pnpm changeset",
+		"size": "cat dist/pocket-shader.min.js | pnpx brotli-size-cli",
+		"sync-version": "changeset version && pnpx sync-version jsr.json",
+		"lint": "publint"
+	},
+	"devDependencies": {
+		"@changesets/cli": "^2.27.5",
+		"@svitejs/changesets-changelog-github-compact": "^1.1.0",
+		"@types/bun": "^1.1.3",
+		"@types/node": "^20.14.2",
+		"@types/webgl2": "^0.0.11",
+		"changeset": "^0.2.6",
+		"publint": "^0.2.8",
+		"tsup": "^8.1.0",
+		"typescript": "^5.4.5"
+	}
+}
