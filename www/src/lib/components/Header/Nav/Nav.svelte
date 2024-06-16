@@ -6,9 +6,8 @@
 	import Desktop from './Desktop.svelte'
 
 	setContext('links', [
-		['/elements', 'Elements'],
-		['/about', 'About'],
-		['/contact', 'Contact'],
+		['/playground', 'Playground'],
+		['https://github.com/braebo/threets', 'Github'],
 	])
 </script>
 

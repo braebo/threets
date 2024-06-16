@@ -3,7 +3,7 @@ import { parse } from 'cookie'
 
 export const handle: Handle = ({ event, resolve }) => {
 	const cookies = parse(event.request.headers?.get('cookie') || '')
-	event.locals.theme = <'dark' | 'light' | 'system'>cookies.theme || 'dark'
+	event.locals.theme = <'dark' | 'light' | 'system'>cookies['theme'] || 'dark'
 
 	let page = ''
 	return resolve(event, {
