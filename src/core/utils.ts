@@ -1,4 +1,6 @@
-import { Vec3 } from './vectors'
+import type { Vec3 } from './vectors'
+
+export type QuerySelector = `#${string}` | `.${string}` | string
 
 /**
  * Converts radians to degrees.
@@ -36,6 +38,6 @@ export function cross_arr(a: number[], b: number[]) {
 	return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
 }
 
-export function select(elementOrSelector?: string | Element) {
+export function select(elementOrSelector?: QuerySelector | Element) {
 	return typeof elementOrSelector === 'string' ? document.querySelector(elementOrSelector) : elementOrSelector
 }
