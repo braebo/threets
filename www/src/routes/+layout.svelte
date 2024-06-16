@@ -6,10 +6,10 @@
 	import { Fractils, theme } from 'fractils'
 	import { browser } from '$app/environment'
 	import { parse } from 'cookie'
-	import '../styles/app.scss'
+	import '$lib/styles/app.scss'
 
 	// Keeps the theme cookie in sync.
-	$: if (browser && $theme !== parse(document.cookie).theme) {
+	$: if (browser && $theme !== parse(document.cookie)['theme']) {
 		document.cookie = `theme=${$theme}`
 	}
 </script>
