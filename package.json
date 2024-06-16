@@ -20,6 +20,11 @@
 		"README.md",
 		"LICENSE"
 	],
+	"exports": {
+		".": {
+			"default": "./src/index.ts"
+		}
+	},
 	"scripts": {
 		"dev": "cd www && pnpm dev",
 		"build": "tsup",
