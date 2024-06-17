@@ -20,7 +20,6 @@ export type { StageOptions } from './core/stage'
 export { Stage } from './core/stage'
 
 export {
-	type QuerySelector,
 	subtractVectors,
 	cross_arr,
 	normalize,
@@ -29,3 +28,5 @@ export {
 	select,
 	cross,
 } from './core/utils'
+
+export type { QuerySelector, GL, GLMode, GLPrimitive } from './core/types'
