@@ -1,7 +1,9 @@
+import type { QuerySelector } from './types'
+
 import { Geometry, type GeometryOptions } from './geometry'
 import { Uniform, type UniformOptions } from './uniform'
 import { Camera, type CameraOptions } from './camera'
-import { select, type QuerySelector } from './utils'
+import { select, LogMethods } from './utils'
 import { Transform } from './transform'
 
 export interface StageOptions {
@@ -12,8 +14,11 @@ export interface StageOptions {
 	fragment?: string
 	depth?: number
 	camera?: CameraOptions
+	geometries?: GeometryOptions[]
+	uniforms?: UniformOptions[]
 }
 
+@LogMethods('Stage')
 export class Stage {
 	opts: StageOptions
 
@@ -39,6 +44,7 @@ export class Stage {
 precision mediump float;
 in vec4 a_position;
 uniform vec2 u_resolution;
+uniform mat4 u_matrix;
 out vec2 v_uv;
 main() {
 	v_uv = a_position.xy / u_resolution;
@@ -51,7 +57,7 @@ precision mediump float;
 in vec2 v_uv;
 out vec4 fragColor;
 void main() {
-	fragColor = vec4(v_uv, (v_uv.y + v_uv.x) * 0.5), 1.0);
+	fragColor = vec4(v_uv, (v_uv.y + v_uv.x) * 0.5, 1.0);
 }`
 
 	initialized = false
@@ -77,7 +83,7 @@ void main() {
 			}
 		}
 
-		if (options?.autoInit) {
+		if (options?.autoInit ?? true) {
 			if (typeof globalThis.document === 'undefined') return
 
 			this.init()
@@ -131,6 +137,20 @@ void main() {
 
 		this._createDefaultUniforms()
 
+		if (this.opts?.uniforms) {
+			for (const uniform of this.opts.uniforms) {
+				this.addUniform(uniform)
+			}
+		}
+
+		//* Setup Geometries
+
+		if (this.opts?.geometries) {
+			for (const geometry of this.opts.geometries) {
+				this.addGeometry(geometry)
+			}
+		}
+
 		//* Setup Camera
 
 		this.camera = new Camera({
@@ -153,25 +173,24 @@ void main() {
 	addUniform(uniformOrOptions: Uniform | UniformOptions) {
 		if (!this.gl) throw new Error('WebGL2 context not found')
 		if (!this.program) throw new Error('Program not found')
-		if (uniformOrOptions instanceof Uniform)
+
+		if (uniformOrOptions instanceof Uniform) {
 			this.uniforms.set(uniformOrOptions.name, uniformOrOptions)
-		else
+		} else {
 			this.uniforms.set(
 				uniformOrOptions.name,
 				new Uniform(this.gl, this.program, uniformOrOptions),
 			)
+		}
 	}
 
-	addGeometry(geometryOrOptions: Geometry | GeometryOptions) {
+	addGeometry(options: GeometryOptions): Geometry {
 		if (!this.gl) throw new Error('WebGL2 context not found')
 		if (!this.program) throw new Error('Program not found')
-		if (geometryOrOptions instanceof Geometry)
-			this.geometries.set(geometryOrOptions.name, geometryOrOptions)
-		else
-			this.geometries.set(
-				geometryOrOptions.name,
-				new Geometry(this.gl, this.program, geometryOrOptions),
-			)
+
+		const geometry = new Geometry(this.gl, this.program, options)
+		this.geometries.set(options.name, geometry)
+		return geometry
 	}
 
 	update() {
@@ -205,7 +224,7 @@ void main() {
 
 		this.addUniform({
 			name: 'u_matrix',
-			type: 'array',
+			type: 'mat4',
 			value: () => this.transform!.matrix,
 			update: (location, value) => {
 				this.gl!.uniformMatrix4fv(location, false, value)
@@ -239,14 +258,14 @@ void main() {
 		const program = this.gl.createProgram()!
 		if (!program) throw new Error('Failed to create program.')
 
-		this.gl.attachShader(program, this.vertex)
-		this.gl.attachShader(program, this.fragment)
-
+		this.gl.attachShader(program, this.vertexShader!)
+		this.gl.attachShader(program, this.fragmentShader!)
 		this.gl.linkProgram(program)
 
 		if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
-			console.error('Failed to link program', this.gl.getProgramInfoLog(program))
-			throw new Error('Failed to link program')
+			throw new Error('❌ Failed to link program', {
+				cause: this.gl.getProgramInfoLog(program),
+			})
 		}
 
 		if (this.vertexShader) {
@@ -268,9 +287,19 @@ void main() {
 		if (!this.gl) throw new Error('WebGL2 context not found')
 
 		const shader = this.gl.createShader(type)
-		if (!shader) throw new Error('Failed to create shader')
+		if (!shader) throw new Error('❌ Failed to create shader', { cause: { source, type } })
 		this.gl.shaderSource(shader, source)
 		this.gl.compileShader(shader)
+
+		const message = this.gl.getShaderInfoLog(shader)
+		const status = this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)
+		if (!status || message?.length) {
+			console.error(
+				`❌ Failed to compile ${type == this.gl.VERTEX_SHADER ? 'vertex' : 'fragment'} shader`,
+			)
+			throw new Error(message ?? 'Unknown error...', { cause: { source, type } })
+		}
+
 		return shader
 	}
 

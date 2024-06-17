@@ -1,6 +1,7 @@
+import type { Mat4 } from './matrix'
+
 import { subtractVectors, cross, normalize } from './utils'
 import { Vector3 } from './vectors'
-import { Mat4 } from './matrix'
 
 export interface TransformOptions {
 	identity: () => Mat4
