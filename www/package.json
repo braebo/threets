@@ -1,14 +1,11 @@
 {
-	"name": "frackit",
+	"name": "threets-www",
 	"private": true,
 	"version": "0.0.1",
-	"description": "Opinionated SvelteKit starter template.",
+	"description": "A 3D WebGL library.",
 	"keywords": [
-		"sveltekit",
-		"template",
-		"starter",
-		"svelte",
-		"kit"
+		"webgl",
+		"typescript"
 	],
 	"type": "module",
 	"scripts": {

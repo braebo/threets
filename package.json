@@ -41,6 +41,7 @@
 		"@types/node": "^20.14.2",
 		"@types/webgl2": "^0.0.11",
 		"changeset": "^0.2.6",
+		"esm-env": "^1.0.0",
 		"publint": "^0.2.8",
 		"tsup": "^8.1.0",
 		"typescript": "^5.4.5"
