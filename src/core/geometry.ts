@@ -1,11 +1,23 @@
+import type { GLMode, GLPrimitive } from './types'
+
 export interface GeometryOptions {
 	name: string
-	// data
-	positions?: Float32Array
+	/**
+	 * The vertex positions data.
+	 */
+	positions: Float32Array
 	indices?: Uint16Array
+	/**
+	 * The rendering method to use when drawing the geometry.
+	 * @default gl.TRIANGLES
+	 */
+	mode?: GLMode
 	// attrs
 	size?: number
-	type?: number
+	/**
+	 * @default gl.FLOAT
+	 */
+	type?: GLPrimitive
 	normalize?: boolean
 	stride?: number
 	offset?: number
@@ -19,9 +31,10 @@ export class Geometry {
 
 	_positions: Float32Array
 	indices?: Uint16Array
-
+	mode: GLMode
 	size: number
-	type: number
+	type: GLPrimitive
+
 	normalize: boolean
 	stride: number
 	offset: number
@@ -34,7 +47,11 @@ export class Geometry {
 		return this._positions.length / this.size
 	}
 
-	constructor(public gl: WebGL2RenderingContext, program: WebGLProgram, options: GeometryOptions) {
+	constructor(
+		public gl: WebGL2RenderingContext,
+		program: WebGLProgram,
+		options: GeometryOptions,
+	) {
 		this._positions = options.positions || new Float32Array()
 		this.indices = options.indices
 
@@ -44,17 +61,26 @@ export class Geometry {
 		this.normalize = options.normalize ?? false
 		this.stride = options.stride ?? 0
 		this.offset = options.offset ?? 0
+		this.mode = options.mode ?? gl.TRIANGLES
 
 		this.location = gl.getAttribLocation(program, options.name)
 
 		this.buffer = gl.createBuffer()!
 		if (!this.buffer) {
-			console.error('Failed to create buffer', { options, buffer: this.buffer })
-			throw new Error('Failed to create buffer')
+			throw new Error('❌ Failed to create buffer', {
+				cause: { options, buffer: this.buffer },
+			})
 		}
 
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer)
-		gl.vertexAttribPointer(this.location, this.size, this.type, this.normalize, this.stride, this.offset)
+		gl.vertexAttribPointer(
+			this.location,
+			this.size,
+			this.type,
+			this.normalize,
+			this.stride,
+			this.offset,
+		)
 
 		gl.bufferData(gl.ARRAY_BUFFER, this._positions, gl.STATIC_DRAW)
 
@@ -68,12 +94,19 @@ export class Geometry {
 	render() {
 		this.gl.enableVertexAttribArray(this.location)
 		this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer)
-		this.gl.vertexAttribPointer(this.location, this.size, this.type, this.normalize, this.stride, this.offset)
+		this.gl.vertexAttribPointer(
+			this.location,
+			this.size,
+			this.type,
+			this.normalize,
+			this.stride,
+			this.offset,
+		)
 
 		if (this.indices) {
-			this.gl.drawElements(this.gl.TRIANGLES, this.indices.length, this.gl.UNSIGNED_SHORT, 0)
+			this.gl.drawElements(this.mode, this.indices.length, this.gl.UNSIGNED_SHORT, 0)
 		} else {
-			this.gl.drawArrays(this.gl.TRIANGLES, 0, this.vertexCount)
+			this.gl.drawArrays(this.mode, 0, this.vertexCount)
 		}
 	}
 }
