@@ -1,6 +1,7 @@
+import type { QuerySelector } from './types'
 import type { Vec3 } from './vectors'
 
-export type QuerySelector = `#${string}` | `.${string}` | string
+import { DEV } from 'esm-env'
 
 /**
  * Converts radians to degrees.
@@ -39,5 +40,36 @@ export function cross_arr(a: number[], b: number[]) {
 }
 
 export function select(elementOrSelector?: QuerySelector | Element) {
-	return typeof elementOrSelector === 'string' ? document.querySelector(elementOrSelector) : elementOrSelector
+	return typeof elementOrSelector === 'string'
+		? document.querySelector(elementOrSelector)
+		: elementOrSelector
+}
+
+const hexColorHash = (name: string): string =>
+	'#' +
+	(0x1000000 + (name.split('').reduce((acc, c) => acc + c.charCodeAt(0) * 42, 0) & 0xffffff))
+		.toString(16)
+		.slice(1)
+		.replace(/^./, 'F')
+
+/**
+ * Dev-time logging of class methods.
+ */
+export function LogMethods(id: string): ClassDecorator {
+	return function (target: Function) {
+		for (const key of Object.getOwnPropertyNames(target.prototype)) {
+			const method = target.prototype[key]
+			if (key !== 'constructor' && typeof method === 'function') {
+				const color = hexColorHash(key)
+				target.prototype[key] = function (...args: any[]) {
+					if (DEV && !key.match(/_setUniform/)) {
+						console.log(`%c${id} : ${key}%c()`, `color:${color}`, `color:inherit`, {
+							this: this,
+						})
+					}
+					return method.apply(this, args)
+				}
+			}
+		}
+	}
 }
