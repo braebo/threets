@@ -4,12 +4,12 @@
 		"types": ["node"],
 		"target": "ESNext",
 		"module": "ESNext",
+		"moduleResolution": "Bundler",
 
 		"strict": true,
 		"allowJs": true,
 		"checkJs": true,
 		"skipLibCheck": true,
-		"noFallthroughCasesInSwitch": true,
 
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
@@ -18,6 +18,10 @@
 
 		// JSR
 		"noImplicitReturns": true,
+
+		// Experimental Decorators
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": true,
 
 		"outDir": "dist"
 	},
