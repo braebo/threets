@@ -42,22 +42,26 @@ export class Stage {
 	vertexShader: WebGLShader | null = null
 	vertex: string | null = `#version 300 es
 precision mediump float;
+
 in vec4 a_position;
 uniform vec2 u_resolution;
 uniform mat4 u_matrix;
 out vec2 v_uv;
-main() {
-	v_uv = a_position.xy / u_resolution;
-	gl_Position = a_position;
+
+void main() {
+    v_uv = a_position.xy * 0.5 + 0.5;
+    gl_Position = a_position;
 }`
 
 	fragmentShader: WebGLShader | null = null
 	fragment: string | null = `#version 300 es
 precision mediump float;
+
 in vec2 v_uv;
 out vec4 fragColor;
+
 void main() {
-	fragColor = vec4(v_uv, (v_uv.y + v_uv.x) * 0.5, 1.0);
+   fragColor = vec4(v_uv.x, v_uv.y, v_uv.y + v_uv.x, 1.0);
 }`
 
 	initialized = false
@@ -80,6 +84,7 @@ void main() {
 				document.addEventListener('DOMContentLoaded', this.init)
 			} else {
 				this.init()
+				this.maybeRender()
 			}
 		}
 
@@ -87,6 +92,7 @@ void main() {
 			if (typeof globalThis.document === 'undefined') return
 
 			this.init()
+			this.maybeRender()
 		}
 	}
 
@@ -220,6 +226,11 @@ void main() {
 		}
 	}
 
+	/** @todo - Render loop state check? */
+	maybeRender() {
+		if (this.initialized) this.render()
+	}
+
 	resize() {
 		const dpr = window.devicePixelRatio
 		const displayWidth = Math.floor(this.canvas.clientWidth * dpr)
@@ -322,12 +333,28 @@ void main() {
 		return shader
 	}
 
-	resize = (entries: ResizeObserverEntry[]) => {
-		const target = entries[0].target
-		if (target instanceof HTMLCanvasElement) {
-			target.width = Math.round(entries[0].devicePixelContentBoxSize[0].inlineSize)
-			target.height = Math.round(entries[0].devicePixelContentBoxSize[0].blockSize)
-		}
+	/**
+	 * Adds a canvas-sized quad geometry attatched to the `a_position` attribute.
+	 *
+	 * The geometry is accessible via the `geometries` property:
+	 * ```ts
+	 * const quad = stage.geometries.get('a_position')
+	 * ```
+	 */
+	addSimpleQuad(): this {
+		// prettier-ignore
+		this.addGeometry({
+			name: 'a_position',
+			positions: new Float32Array([
+    	        -1, -1, 0,  // bottom left corner
+    	         1, -1, 0,  // bottom right corner
+    	        -1,  1, 0,  // top left corner
+    	         1,  1, 0,  // top right corner
+    	    ]),
+    	    indices: new Uint16Array([0, 1, 2, 2, 1, 3]),
+		})
+
+		return this
 	}
 
 	// private _resizeCanvasToDisplay(canvas: HTMLCanvasElement) {

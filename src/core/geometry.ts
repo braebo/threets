@@ -40,7 +40,8 @@ export class Geometry {
 	offset: number
 
 	set positions(positions: Float32Array) {
-		this.gl.bufferData(this.gl.ARRAY_BUFFER, positions, this.gl.STATIC_DRAW)
+		this._positions = positions
+		// this.gl.bufferData(this.gl.ARRAY_BUFFER, positions, this.gl.STATIC_DRAW)
 	}
 
 	get vertexCount() {
