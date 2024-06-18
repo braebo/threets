@@ -109,8 +109,10 @@ void main() {
 		}
 		this.canvas = canvas as HTMLCanvasElement
 
-		this.resizeObserver = new ResizeObserver(this.resize)
+		this.resizeObserver = new ResizeObserver(this.onResize.bind(this))
 		this.resizeObserver.observe(this.canvas as HTMLCanvasElement, { box: 'content-box' })
+
+		this.resize()
 
 		//* Setup WebGL Context
 
@@ -215,6 +217,23 @@ void main() {
 
 		for (const geometry of this.geometries.values()) {
 			geometry.render()
+		}
+	}
+
+	resize() {
+		const dpr = window.devicePixelRatio
+		const displayWidth = Math.floor(this.canvas.clientWidth * dpr)
+		const displayHeight = Math.floor(this.canvas.clientHeight * dpr)
+		this.canvas.width = displayWidth
+		this.canvas.height = displayHeight
+	}
+
+	onResize(entries: ResizeObserverEntry[]) {
+		const target = entries[0].target
+		if (target instanceof HTMLCanvasElement) {
+			this.canvas.width = entries[0].devicePixelContentBoxSize[0].inlineSize
+			this.canvas.height = entries[0].devicePixelContentBoxSize[0].blockSize
+			this.maybeRender()
 		}
 	}
 
