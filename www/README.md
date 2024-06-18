@@ -1,4 +1,4 @@
-# [Frackit](https://github.com/fractalhq/frackit)
+# [threets](https://github.com/fractalhq/threets)
 
 Minimal Sveltekit Starter Template.
 
@@ -7,7 +7,7 @@ Minimal Sveltekit Starter Template.
 ### download
 
 ```bash
-npx degit fractalhq/frackit app
+npx degit fractalhq/threets app
 ```
 
 ### launch
@@ -37,5 +37,5 @@ npm run dev
 -   [Dark Theme](https://github.com/fractalhq/#ThemeToggle)
 -   [Fractils](https://github.com/fractalhq/fractils)
 -   [Greset](https://github.com/ghostdevv/greset)
--   [Local](https://github.com/FractalHQ/frackit/tree/main/static/fonts) Font [Setup](https://github.com/FractalHQ/frackit/blob/main/src/styles/app.scss#L4-L24)
+-   [Local](https://github.com/FractalHQ/threets/tree/main/static/fonts) Font [Setup](https://github.com/FractalHQ/threets/blob/main/src/styles/app.scss#L4-L24)
 -   PWA / Service Worker

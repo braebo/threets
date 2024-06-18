@@ -15,5 +15,5 @@
 </script>
 
 <svelte:head>
-	<title>Frackit · {pageTitle()}</title>
+	<title>threets · {pageTitle()}</title>
 </svelte:head>
