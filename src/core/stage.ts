@@ -1,10 +1,12 @@
 import type { QuerySelector } from './types'
 
-import { Geometry, type GeometryOptions } from './geometry'
+import { BufferGeometry, type BufferGeometryOptions } from './geometry'
 import { Uniform, type UniformOptions } from './uniform'
 import { Camera, type CameraOptions } from './camera'
-import { select, LogMethods } from './utils'
-import { Transform } from './transform'
+import { Transform, type TransformOptions } from './transform'
+import { LinkedListener } from './listener'
+import { select, Log } from './utils'
+import { isVector3, Vector3, type Vec3 } from './vectors'
 
 export interface StageOptions {
 	canvas?: HTMLCanvasElement | QuerySelector
@@ -14,11 +16,11 @@ export interface StageOptions {
 	fragment?: string
 	depth?: number
 	camera?: CameraOptions
-	geometries?: GeometryOptions[]
+	geometries?: BufferGeometryOptions[]
 	uniforms?: UniformOptions[]
 }
 
-@LogMethods('Stage')
+@Log('Stage', ['render', 'update', '_emitOnUpdate'])
 export class Stage {
 	opts: StageOptions
 
@@ -29,11 +31,13 @@ export class Stage {
 	gl: WebGL2RenderingContext | null = null
 	program: WebGLProgram | null = null
 
-	uniforms: Map<'u_resolution' | 'u_matrix' | string, Uniform> = new Map()
-	geometries: Map<'a_position' | string, Geometry> = new Map()
+	uniforms: Map<'u_resolution' | 'u_camera' | string, Uniform> = new Map()
+	geometries: Map<'a_position' | string, BufferGeometry> = new Map()
 
 	camera!: Camera
 	transform!: Transform
+
+	worldOrigin = new Transform().matrix
 
 	uResolution!: Uniform
 	uMatrix!: Uniform
@@ -45,7 +49,7 @@ precision mediump float;
 
 in vec4 a_position;
 uniform vec2 u_resolution;
-uniform mat4 u_matrix;
+uniform mat4 u_camera;
 out vec2 v_uv;
 
 void main() {
@@ -83,20 +87,22 @@ void main() {
 			if (globalThis.document?.readyState === 'loading') {
 				document.addEventListener('DOMContentLoaded', this.init)
 			} else {
-				this.init()
-				this.maybeRender()
+				this.init().then(() => {
+					this.maybeRender()
+				})
 			}
 		}
 
 		if (options?.autoInit ?? true) {
 			if (typeof globalThis.document === 'undefined') return
 
-			this.init()
-			this.maybeRender()
+			this.init().then(() => {
+				this.maybeRender()
+			})
 		}
 	}
 
-	init() {
+	async init() {
 		if (this.initialized) return
 		this.initialized = true
 
@@ -138,11 +144,6 @@ void main() {
 
 		//* Setup Uniforms
 
-		this.transform = new Transform({
-			identity: () =>
-				Transform.projection(this.canvas.width, this.canvas.height, this.opts.depth ?? 400),
-		})
-
 		this._createDefaultUniforms()
 
 		if (this.opts?.uniforms) {
@@ -162,10 +163,15 @@ void main() {
 		//* Setup Camera
 
 		this.camera = new Camera({
-			fov: 60,
-			aspect: this.canvas.width / this.canvas.height,
-			zNear: 1,
-			zFar: 2000,
+			fov: this.opts.camera?.fov ?? 60,
+			aspect: this.opts.camera?.aspect ?? this.canvas.width / this.canvas.height,
+			zNear: this.opts.camera?.zNear ?? 1,
+			zFar: this.opts.camera?.zFar ?? 2000,
+			transform:
+				this.opts.camera?.transform ??
+				{
+					// position: new Vector3({ x: -5, y: 5, z: -10 }),
+				},
 		})
 
 		this.addUniform({
@@ -192,20 +198,34 @@ void main() {
 		}
 	}
 
-	addGeometry(options: GeometryOptions): Geometry {
+	addGeometry(options: BufferGeometryOptions): BufferGeometry {
 		if (!this.gl) throw new Error('WebGL2 context not found')
 		if (!this.program) throw new Error('Program not found')
 
-		const geometry = new Geometry(this.gl, this.program, options)
+		const geometry = new BufferGeometry(this.gl, this.program, options)
 		this.geometries.set(options.name, geometry)
 		return geometry
 	}
 
 	update() {
-		this.transform.update()
-
 		for (const uniform of this.uniforms.values()) {
 			uniform.update(uniform.value())
+		}
+		this._emitOnUpdate()
+	}
+
+	onUpdate(callback: () => void) {
+		if (!this._onUpdateListeners) {
+			this._onUpdateListeners ??= new LinkedListener(callback, this)
+		} else {
+			this._onUpdateListeners.connect(new LinkedListener(callback, this))
+		}
+	}
+	private _onUpdateListeners?: LinkedListener
+	private _emitOnUpdate() {
+		let listener = this._onUpdateListeners as LinkedListener | null
+		while (listener) {
+			listener = listener.emit()
 		}
 	}
 
@@ -251,15 +271,6 @@ void main() {
 	private _createDefaultUniforms() {
 		if (!this.gl) throw new Error('WebGL2 context not found')
 		if (!this.program) throw new Error('Program not found')
-
-		this.addUniform({
-			name: 'u_matrix',
-			type: 'mat4',
-			value: () => this.transform!.matrix,
-			update: (location, value) => {
-				this.gl!.uniformMatrix4fv(location, false, value)
-			},
-		})
 
 		this.addUniform({
 			name: 'u_resolution',
@@ -325,7 +336,9 @@ void main() {
 		const status = this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)
 		if (!status || message?.length) {
 			console.error(
-				`❌ Failed to compile ${type == this.gl.VERTEX_SHADER ? 'vertex' : 'fragment'} shader`,
+				`❌ Failed to compile ${
+					type == this.gl.VERTEX_SHADER ? 'vertex' : 'fragment'
+				} shader`,
 			)
 			throw new Error(message ?? 'Unknown error...', { cause: { source, type } })
 		}
@@ -344,32 +357,17 @@ void main() {
 	addSimpleQuad(): this {
 		// prettier-ignore
 		this.addGeometry({
-			name: 'a_position',
-			positions: new Float32Array([
-    	        -1, -1, 0,  // bottom left corner
-    	         1, -1, 0,  // bottom right corner
-    	        -1,  1, 0,  // top left corner
-    	         1,  1, 0,  // top right corner
-    	    ]),
-    	    indices: new Uint16Array([0, 1, 2, 2, 1, 3]),
-		})
+            name: 'a_position',
+            positions: new Float32Array([
+                -1, -1, 0,  // bottom left corner
+                 1, -1, 0,  // bottom right corner
+                -1,  1, 0,  // top left corner
+                 1,  1, 0,  // top right corner
+            ]),
+            indices: new Uint16Array([0, 1, 2, 2, 1, 3]),
+        })
 
 		return this
 	}
-
-	// private _resizeCanvasToDisplay(canvas: HTMLCanvasElement) {
-	// 	// Get the size the browser is displaying the canvas in device pixels.
-	// 	const [displayWidth, displayHeight] = [canvas.clientWidth, canvas.clientHeight]
-
-	// 	// Check if the canvas is not the same size.
-	// 	const needResize = canvas.width !== displayWidth || canvas.height !== displayHeight
-
-	// 	if (needResize) {
-	// 		// Make the canvas the same size
-	// 		canvas.width = displayWidth
-	// 		canvas.height = displayHeight
-	// 	}
-
-	// 	return needResize
-	// }
+}
 }
