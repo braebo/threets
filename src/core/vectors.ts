@@ -1,41 +1,82 @@
+import { Log } from './utils'
+
 export type Vec2 = { x: number; y: number }
 export type Vec3 = { x: number; y: number; z: number }
+export type Vector3Like = Partial<Vec3> | [number, number, number] | number
 
+export function isVector3(obj: any): obj is Vector3 {
+	return !!obj.isVector3
+}
+
+function isNumber(n: any): n is number {
+	return typeof n === 'number' && !isNaN(n)
+}
+
+@Log('Vector3')
 export class Vector3 {
-	x!: number
-	y!: number
-	z!: number
+	readonly isVector3 = true as const
+	_x = 0
+	_y = 0
+	_z = 0
 
-	constructor(x?: number, y?: number, z?: number)
-	constructor(arr?: [number, number, number])
-	constructor(obj?: Vec3)
-	constructor(xOrArrOrObj?: number | [number, number, number] | Vec3, y?: number, z?: number) {
+	constructor(vec3Like: Vector3Like)
+	constructor(x: number, y?: number, z?: number)
+	constructor(
+		xOrArrOrObj?: number | [number, number, number] | Partial<Vec3>,
+		y?: number,
+		z?: number,
+	) {
 		// @ts-expect-error
-		this.set(xOrArrOrObj, y, z)
+		this.set(xOrArrOrObj ?? 0, y, z)
 	}
 
 	get(): Vec3 {
 		return { x: this.x, y: this.y, z: this.z }
 	}
 
-	set(x?: number, y?: number, z?: number): this
-	set(arr?: [number, number, number]): this
-	set(obj?: Vec3): this
-	set(xOrArrOrObj?: number | [number, number, number] | Vec3, y?: number, z?: number): this {
-		if (Array.isArray(xOrArrOrObj)) {
-			this.x = xOrArrOrObj[0]
-			this.y = xOrArrOrObj[1]
-			this.z = xOrArrOrObj[2]
-		} else if (typeof xOrArrOrObj === 'object') {
-			const { x, y, z } = xOrArrOrObj
-			this.x = x
-			this.y = y
-			this.z = z
+	get x() {
+		return this._x
+	}
+	get y() {
+		return this._y
+	}
+	get z() {
+		return this._z
+	}
+
+	set(value: Vector3Like): this
+	set(x: number, y?: number, z?: number): this
+	set(xOrVec3Like: Vector3Like | number, y?: number, z?: number): this {
+		if (Array.isArray(xOrVec3Like)) {
+			this._x = xOrVec3Like[0]
+			this._y = xOrVec3Like[1]
+			this._z = xOrVec3Like[2]
+		} else if (typeof xOrVec3Like === 'object') {
+			if (isNumber(xOrVec3Like.x)) this._x = xOrVec3Like.x
+			if (isNumber(xOrVec3Like.y)) this._y = xOrVec3Like.y
+			if (isNumber(xOrVec3Like.z)) this._z = xOrVec3Like.z
+		} else if (typeof xOrVec3Like === 'string') {
+			if (xOrVec3Like === 'x') this._x = y!
+			if (xOrVec3Like === 'y') this._y = y!
+			if (xOrVec3Like === 'z') this._z
 		} else {
-			this.x = xOrArrOrObj ?? 1
-			this.y = y ?? this.x
-			this.z = z ?? this.y ?? this.x
+			this._x = xOrVec3Like ?? 1
+			this._y = y ?? this.x
+			this._z = z ?? this.y ?? this.x
 		}
+		return this
+	}
+
+	setX(value: number): this {
+		this._x = value
+		return this
+	}
+	setY(value: number): this {
+		this._y = value
+		return this
+	}
+	setZ(value: number): this {
+		this._z = value
 		return this
 	}
 
@@ -51,62 +92,3 @@ export class Vector3 {
 		return this.get()
 	}
 }
-
-// export class Vector3 {
-// 	x: number
-// 	y: number
-// 	z: number
-
-// 	constructor({ x, y, z }: Vec3)
-// 	constructor(x?: number, y?: number, z?: number)
-// 	constructor(x?: number | Vec3, y?: number, z?: number) {
-// 		if (typeof x === 'object') ({ x, y, z } = x)
-// 		this.x = x ?? 1
-// 		this.y = y ?? this.x
-// 		this.z = z ?? this.y ?? this.x
-// 	}
-
-// 	toArray(): [number, number, number] {
-// 		return [this.x, this.y, this.z]
-// 	}
-// }
-
-// export class Vector3_arr {
-// 	x!: number
-// 	y!: number
-// 	z!: number
-
-// 	constructor(x?: number, y?: number, z?: number)
-// 	constructor(arr?: [number, number, number])
-// 	constructor(xOrArr?: number | [number, number, number], y?: number, z?: number) {
-// 		// @ts-expect-error
-// 		this.set(xOrArr, y, z)
-// 	}
-
-// 	set(x?: number, y?: number, z?: number): this
-// 	set(arr?: [number, number, number]): this
-// 	set(xOrArr?: number | [number, number, number], y?: number, z?: number): this {
-// 		if (Array.isArray(xOrArr)) {
-// 			this.x = xOrArr[0]
-// 			this.y = xOrArr[1]
-// 			this.z = xOrArr[2]
-// 		} else {
-// 			this.x = xOrArr ?? 1
-// 			this.y = y ?? this.x
-// 			this.z = z ?? this.y ?? this.x
-// 		}
-// 		return this
-// 	}
-
-// 	toArray() {
-// 		return [this.x, this.y, this.z]
-// 	}
-
-// 	toObject(): Vec3 {
-// 		return { x: this.x, y: this.y, z: this.z }
-// 	}
-
-//     static fromArray(arr: [number, number, number]) {
-//         return new Vector3_arr(arr)
-//     }
-// }
