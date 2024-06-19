@@ -53,19 +53,25 @@ const hexColorHash = (name: string): string =>
 		.replace(/^./, 'F')
 
 /**
- * Dev-time logging of class methods.
+ * Dev-time logging of class method calls.
  */
-export function LogMethods(id: string): ClassDecorator {
+export function Log(id: string, blacklist = [] as string[]): ClassDecorator {
 	return function (target: Function) {
 		for (const key of Object.getOwnPropertyNames(target.prototype)) {
 			const method = target.prototype[key]
 			if (key !== 'constructor' && typeof method === 'function') {
 				const color = hexColorHash(key)
 				target.prototype[key] = function (...args: any[]) {
-					if (DEV && !key.match(/_setUniform/)) {
-						console.log(`%c${id} : ${key}%c()`, `color:${color}`, `color:inherit`, {
-							this: this,
-						})
+					if (DEV && !key.match(/_setUniform/) && !blacklist.includes(key)) {
+						console.log(
+							`%c${id} : ${key}%c()`,
+							`color:${color}`,
+							`color:inherit`,
+							...args,
+							{
+								this: this,
+							},
+						)
 					}
 					return method.apply(this, args)
 				}
