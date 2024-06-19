@@ -1,17 +1,18 @@
-// import { Mat4, Matrix4 } from './matrix'
+import type { Vec3, Vector3Like } from './vectors'
 
 import { Transform, type TransformOptions } from './transform'
+import { degToRad, Log } from './utils'
 import { Vector3 } from './vectors'
-import { degToRad } from './utils'
 
 export interface CameraOptions {
 	fov: number
 	aspect: number
 	zNear: number
 	zFar: number
-	transform?: TransformOptions
+	transform: Partial<TransformOptions>
 }
 
+@Log('Camera')
 export class Camera {
 	/**
 	 * Field of view in radians.
@@ -39,19 +40,20 @@ export class Camera {
 	 */
 	far = 2000
 
-	transform: Transform
+	up = new Vector3(0, 1, 0)
 
-	constructor(options?: CameraOptions) {
+	readonly transform: Transform
+
+	constructor(options?: Partial<CameraOptions>) {
 		this.fov = options?.fov ?? degToRad(60)
 		this.aspect = options?.aspect ?? 1
 		this.near = options?.zNear ?? 1
 		this.far = options?.zFar ?? 2000
-		// this.matrix = Matrix4.perspective(this.fov, this.aspect, this.near, this.far)
 
 		const transformOpts = options?.transform
-		const position = transformOpts?.position ?? new Vector3({ x: -150, y: 0, z: -360 })
-		const rotation = transformOpts?.rotation ?? new Vector3({ x: degToRad(190), y: degToRad(40), z: degToRad(320) })
-		const scale = transformOpts?.scale ?? new Vector3({ x: 1, y: 1, z: 1 })
+		const position = transformOpts?.position ?? new Vector3(0)
+		const rotation = transformOpts?.rotation ?? new Vector3(0)
+		const scale = transformOpts?.scale ?? new Vector3(1)
 
 		this.transform = new Transform({
 			identity: () => Transform.perspective(this.fov, this.aspect, this.near, this.far),
@@ -59,28 +61,28 @@ export class Camera {
 			rotation,
 			scale,
 		})
+
+		// todo - make position.x = 4 reactively call transform.update() ?
+		// this.position = new Proxy
+	}
+
+	lookAt(target: Vec3 | Vector3, up = this.up) {
+		Transform.lookAt(this.transform.position, target, up)
 	}
 
 	updateFOV(fov_deg: number) {
 		this.fov = degToRad(fov_deg)
 	}
 
-	updatePosition = (index: 'x' | 'y' | 'z') => {
-		return (value: number) => {
-			this.transform.position[index] = value
-		}
+	updatePosition(value: Vector3Like) {
+		this.transform.position.set(value)
 	}
 
-	updateRotation = (index: 'x' | 'y' | 'z') => {
-		return (angle_degrees: number) => {
-			const angle_radians = (angle_degrees * Math.PI) / 180
-			this.transform.rotation[index] = angle_radians
-		}
+	updateRotation = (value: Vector3Like) => {
+		this.transform.rotation.set(value)
 	}
 
-	updateScale(index: 'x' | 'y' | 'z') {
-		return (value: number) => {
-			this.transform.scale[index] = value
-		}
+	updateScale(value: Vector3Like) {
+		this.transform.scale.set(value)
 	}
 }
