@@ -1,6 +1,7 @@
+import type { Vec3 } from './vectors'
 import type { Mat4 } from './matrix'
 
-import { subtractVectors, cross, normalize } from './utils'
+import { subtractVectors, cross, normalize, Log } from './utils'
 import { Vector3 } from './vectors'
 
 export interface TransformOptions {
@@ -10,12 +11,15 @@ export interface TransformOptions {
 	scale?: Vector3
 }
 
+/**
+ * A 3D transformation matrix.
+ */
+@Log('Transform')
 export class Transform {
 	position: Vector3
 	rotation: Vector3
 	scale: Vector3
-
-	matrix: Mat4
+	matrix!: Mat4
 
 	constructor(options?: TransformOptions) {
 		this.position = options?.position ?? new Vector3(0)
@@ -31,8 +35,9 @@ export class Transform {
                 0, 0, 0, 1,
             ]
         })
-		
-        this.matrix = this.identity()
+
+		// this.matrix = this.identity()
+		this.update()
 	}
 
 	identity: () => Mat4
@@ -46,7 +51,12 @@ export class Transform {
 			.scaleBy(this.scale.x, this.scale.y, this.scale.z)
 	}
 
-	static perspective(fieldOfViewInRadians: number, aspect: number, near: number, far: number): Mat4 {
+	static perspective(
+		fieldOfViewInRadians: number,
+		aspect: number,
+		near: number,
+		far: number,
+	): Mat4 {
 		const f = Math.tan(Math.PI * 0.5 - 0.5 * fieldOfViewInRadians)
 		const rangeInv = 1.0 / (near - far)
 
@@ -59,8 +69,12 @@ export class Transform {
 		];
 	}
 
-	static lookAt(cameraPosition: Vector3, target: Vector3, up: Vector3) {
-		const zAxis = normalize(subtractVectors(cameraPosition, target))
+	static lookAt(
+		currentPosition: Vec3 | Vector3,
+		target: Vec3 | Vector3,
+		up: Vec3 | Vector3,
+	): Mat4 {
+		const zAxis = normalize(subtractVectors(currentPosition, target))
 		const xAxis = normalize(cross(up, zAxis))
 		const yAxis = normalize(cross(zAxis, xAxis))
 		// prettier-ignore
@@ -68,16 +82,16 @@ export class Transform {
 			xAxis.x, xAxis.y, xAxis.z, 0,
 			yAxis.x, yAxis.y, yAxis.z, 0,
 			zAxis.x, zAxis.y, zAxis.z, 0,
-			cameraPosition.x,
-			cameraPosition.y,
-			cameraPosition.z,
+			currentPosition.x,
+			currentPosition.y,
+			currentPosition.z,
 			1,
 		]
 	}
 
 	static projection(width: number, height: number, depth: number): Mat4 {
 		// prettier-ignore
-		//- Note: This matrix flips the Y axis so 0 is at the top.
+		// //- Note: This matrix flips the Y axis so 0 is at the top.
 		return [
 			2 / width, 0, 0, 0,
 			0, -2 / height, 0, 0,
@@ -162,8 +176,8 @@ export class Transform {
 		return this
 	}
 
-	scaleBy(sx: number, sy: number, sz: number): this {
-		this.matrix = this.multiply(this.matrix, this.scaling(sx, sy, sz))
+	scaleBy(x: number, y: number, z: number): this {
+		this.matrix = this.multiply(this.matrix, this.scaling(x, y, z))
 		return this
 	}
 
