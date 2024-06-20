@@ -1,4 +1,4 @@
-import type { Stage } from './core/stage'
+import type { Stage } from './core/Stage'
 // import { Log } from './core/utils'
 
 export type WASDCommand = (typeof WASD_COMMANDS)[number]
@@ -9,14 +9,14 @@ export interface WASDControllerOptions {
 	 * The event listener target.
 	 * @default 'window'
 	 */
-	target?: 'window' | 'canvas'
+	eventTarget?: 'window' | 'canvas'
 	/**
-	 * Automatically initialize the controls, adding event listeners to the {@link target}.
+	 * Automatically initialize the controls, adding event listeners to the {@link eventTarget}.
 	 * @default true
 	 */
 	autoInit?: boolean
 	/**
-	 * Automatically call {@link update} when the a control is activated or deactivated.
+	 * Automatically call {@link update} when a control is activated or deactivated.
 	 * @default true
 	 */
 	autoUpdate?: boolean
@@ -26,36 +26,34 @@ export interface WASDControllerOptions {
 	 */
 	capturePointerLock?: boolean
 	/**
-	 * The default
+	 * Disables the controller when set to `false`.
+	 * @default true
 	 */
 	enabled?: boolean
+	/**
+	 * The base speed of the controller.
+	 * @default 1
+	 */
 	speed?: number
 }
 
-const DEFAULT_STATE: Record<WASDCommand, boolean> = {
-	w: false,
-	a: false,
-	s: false,
-	d: false,
-	q: false,
-	e: false,
-	shift: false,
-	control: false,
-	escape: false,
-}
-
 /**
- * WASDControls
+ * A simple WASD keyboard controller.
  *
- * A simple first-person movement control scheme.
+ * - wasd - forwards left backwards right
+ * - qe - up down
+ * - shift - speed * 2
+ * - control - speed / 2
  *
  * @example
  * ```ts
  * const stage = new Stage()
  * const controls = new WASDControls(stage)
+ *
+ * // You can also set the speed yourself:
+ * controls.speed = 0.1
  * ```
  */
-
 // @Log('OrbitControls')
 export class WASDController {
 	initialized = false
@@ -127,7 +125,7 @@ export class WASDController {
 	private moves: WASDCommand[] = []
 
 	constructor(public stage: Stage, options?: WASDControllerOptions) {
-		this.target = options?.target ?? 'window'
+		this.target = options?.eventTarget ?? 'window'
 		this.capturePointerLock = options?.capturePointerLock ?? false
 		this.enabled = options?.enabled ?? true
 		this._speed = options?.speed ?? 1
@@ -140,13 +138,9 @@ export class WASDController {
 	get target(): Window | HTMLCanvasElement {
 		return this._target
 	}
-	set target(value: WASDControllerOptions['target']) {
+	set target(value: WASDControllerOptions['eventTarget']) {
 		this._target = value === 'canvas' ? this.stage.canvas : globalThis.window
 	}
-
-	// get camera() {
-	// 	return this.stage?.camera
-	// }
 
 	/**
 	 * Initialize the controls, adding event listeners to the {@link target}.
@@ -168,10 +162,19 @@ export class WASDController {
 	 */
 	cancel = () => {
 		this.active = false
-		this.state = structuredClone(DEFAULT_STATE)
 		this.moves = []
+		this.state = {
+			w: false,
+			a: false,
+			s: false,
+			d: false,
+			q: false,
+			e: false,
+			shift: false,
+			control: false,
+			escape: false,
+		}
 		this._speedMultiplier = 1
-
 		if (this.capturePointerLock) {
 			document.exitPointerLock()
 		}
@@ -185,27 +188,23 @@ export class WASDController {
 			for (let i = 0; i < this.moves.length; i++) {
 				this.moveset[this.moves[i]]()
 			}
-		}
-		if (this.autoUpdate) {
-			this.stage.camera.transform.update()
+			if (this.autoUpdate) {
+				this.stage.camera.transform.update()
+			}
 		}
 	}
 
 	private _activate(key: WASDCommand) {
 		if (this.state[key]) {
-			// console.warn('ALREADY ACTIVE:', key)
 			return
 		}
-		// console.warn('🟢 ACTIVING KEY:', key)
 		this.state[key] = true
 		this.moves.push(key)
 		this.updateActive()
 	}
 
 	private _deactivate(key: WASDCommand) {
-		// console.warn('🔴 DEACTIVING KEY:', key)
 		if (!this.state[key]) {
-			// console.error('DEACTIVATION ABORTED:', key)
 			return
 		}
 		this.state[key] = false
@@ -222,16 +221,12 @@ export class WASDController {
 
 	updateActive() {
 		const newActiveState = Object.values(this.state).some(Boolean)
-		// console.log('updateActive() STATE =', newActiveState ? 'ACTIVE' : 'INACTIVE')
 		if (newActiveState === this.active) {
-			// console.log('updateActive(): NO CHANGE')
 			return
 		}
 		if (newActiveState) {
 			if (!this.active) {
-				// console.log('updateActive(): 🟢 ACTIVATING')
 				this.active = true
-				// request pointer lock
 				if (this.capturePointerLock) {
 					try {
 						globalThis.document.body.requestPointerLock()
@@ -242,7 +237,6 @@ export class WASDController {
 				}
 			}
 		} else {
-			// console.log('updateActive(): 🟥 DEACTIVATING')
 			this.active = false
 			this.cancel()
 		}
