@@ -1,5 +1,5 @@
 import type { QuerySelector } from './types'
-import type { Vec3 } from './vectors'
+import type { Vec3 } from './Vector3'
 
 import { DEV } from 'esm-env'
 
@@ -43,6 +43,10 @@ export function select(elementOrSelector?: QuerySelector | Element) {
 	return typeof elementOrSelector === 'string'
 		? document.querySelector(elementOrSelector)
 		: elementOrSelector
+}
+
+export function isNumber(thing: any): thing is number {
+	return typeof thing === 'number' && !isNaN(thing)
 }
 
 const hexColorHash = (name: string): string =>
