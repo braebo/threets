@@ -1,5 +1,9 @@
 <script lang="ts">
-	import type { WASDController, Stage } from 'threets'
+	import type { Stage } from 'threets'
+	import type {
+		// WASDController,
+		OrbitController,
+	} from 'threets'
 
 	import { gridScene } from '$lib/scenes/grid-scene'
 	import { onDestroy, onMount } from 'svelte'
@@ -17,7 +21,8 @@
 	// loads the themes and languages specified.
 
 	let stage: Stage
-	let controller: WASDController
+	// let controller: WASDController
+	let controller: OrbitController
 
 	let highlighter: Highlighter
 	const lang = 'json'
@@ -43,17 +48,25 @@
 				return
 			}
 			codeToHtml(
-				prettyPrint({
-					state: controller.state,
-					active: controller.active,
-					// @ts-expect-error
-					moves: controller.moves,
-					speed: controller.speed,
-				}),
+				`\nController ` +
+					prettyPrint(
+						{
+						...controller,
+						eventTarget: undefined,
+						stage: undefined,
+						// 	// state: controller.state,
+						// 	active: controller.active,
+						// 	//// @ts-expect-error
+						// 	// moves: controller.moves,
+						// 	speed: controller.speed,
+						// 	target: controller.target,
+						// 	position: controller._position,
+						}
+					),
 				{ lang, theme },
 			).then((html) => (listener = html))
 
-			codeToHtml(prettyPrint(stage.camera.transform.matrix), {
+			codeToHtml(`\nCamera ` + prettyPrint(stage.camera), {
 				lang,
 				theme,
 			}).then((html) => (cameraMatrix = html))
@@ -122,8 +135,8 @@
 	}
 
 	button {
-		background: var(--bg-a);
-		color: var(--fg-d);
+		background: var(--dark-a);
+		color: var(--light-d);
 		border: 1px solid var(--bg-d);
 		border-radius: 0.5rem;
 		padding: 0.5rem 1rem;
@@ -136,10 +149,15 @@
 		left: 4.5rem;
 	}
 	.debug-data {
+		:global(*) {
+			font-size: .8rem;
+		}
+		
 		position: relative;
 		width: 13rem;
-		height: 20rem;
+		// height: 20rem;
 		margin: 1rem auto;
+		color: var(--light-a);
 
 		:global(:first-child) {
 			padding: 1.5rem 0.5rem;

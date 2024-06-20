@@ -1,5 +1,9 @@
 import { Gui } from '../../../../../../../fractils/src/lib/gui/gui'
-import { Stage, WASDController, Transform } from 'threets'
+import { Stage } from 'threets'
+import {
+	WASDController,
+	OrbitController,
+} from 'threets'
 
 export async function gridScene(selector: string) {
 	const stage = new Stage({
@@ -28,9 +32,9 @@ void main() {
 	})
 
 	stage.camera.transform.position.setY(5).setZ(-10)
-	Transform.lookAt(stage.camera.transform.position, { x: 0, y: 0, z: 10 }, { x: 0, y: 1, z: 0 })
 
-	const controller = new WASDController(stage, { speed: 0.1 })
+	const controller = new OrbitController(stage)
+	const controller2 = new WASDController(stage, { speed: 0.1 })
 
 	// stage.addSimpleQuad()
 
@@ -61,18 +65,43 @@ void main() {
 		console.error('WebGL Error: ' + error)
 	}
 
+	// function render() {
+	// 	stage.render()
+	// 	controller.update()
+	// 	requestAnimationFrame(render)
+	// }
+	let fps = 60, // Desired FPS
+		now,
+		then = Date.now(),
+		interval = 1000 / fps,
+		delta
+
 	function render() {
-		stage.render()
-		if (controller.active) {
-			controller.update()
-		}
 		requestAnimationFrame(render)
+		now = Date.now()
+		delta = now - then
+
+		if (delta > interval) {
+			then = now - (delta % interval)
+			stage.render()
+			controller.update()
+			controller2.update()
+		}
 	}
 
 	render()
 
 	const gui = new Gui()
-	gui.addMany(controller.state)
+	gui.addNumber({
+		title: 'speed',
+		binding: {
+			key: 'speed',
+			target: controller,
+		},
+		min: 0.01,
+		max: 10,
+		step: 0.01,
+	})
 
 	return { stage, controller }
 }

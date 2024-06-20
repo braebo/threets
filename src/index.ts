@@ -1,29 +1,20 @@
+//? Core
+
+export { Uniform, type UniformOptions, type UniformValueType } from './core/Uniform'
+export { BufferGeometry, type BufferGeometryOptions } from './core/BufferGeometry'
+export { Transform, type TransformOptions } from './core/Transform'
+export { Camera, type CameraOptions } from './core/Camera'
+export { Stage, type StageOptions } from './core/Stage'
+export { Vector2, type Vec2 } from './core/Vector2'
+export { Vector3, type Vec3 } from './core/Vector3'
+export { Matrix4, type Mat4 } from './core/Matrix'
+
 //? Controllers
 
 export { WASDController } from './WASDController'
+export { OrbitController } from './OrbitController'
 
-//? Core
-
-export type { TransformOptions } from './core/transform'
-export { Transform } from './core/transform'
-
-export type { CameraOptions } from './core/camera'
-export { Camera } from './core/camera'
-
-export type { Vec2, Vec3 } from './core/vectors'
-export { Vector3 } from './core/vectors'
-
-export type { UniformOptions, UniformValueType } from './core/uniform'
-export { Uniform } from './core/uniform'
-
-export type { Mat4 } from './core/matrix'
-export { Matrix4 } from './core/matrix'
-
-export type { BufferGeometryOptions } from './core/geometry'
-export { BufferGeometry } from './core/geometry'
-
-export type { StageOptions } from './core/stage'
-export { Stage } from './core/stage'
+//? Utils
 
 export {
 	subtractVectors,
