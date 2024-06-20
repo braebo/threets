@@ -43,6 +43,7 @@
 		"changeset": "^0.2.6",
 		"esm-env": "^1.0.0",
 		"publint": "^0.2.8",
+		"shiki": "1.6.2",
 		"tsup": "^8.1.0",
 		"typescript": "^5.4.5"
 	}
