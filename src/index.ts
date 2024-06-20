@@ -1,3 +1,9 @@
+//? Controllers
+
+export { WASDController } from './WASDController'
+
+//? Core
+
 export type { TransformOptions } from './core/transform'
 export { Transform } from './core/transform'
 
@@ -13,8 +19,8 @@ export { Uniform } from './core/uniform'
 export type { Mat4 } from './core/matrix'
 export { Matrix4 } from './core/matrix'
 
-export type { GeometryOptions } from './core/geometry'
-export { Geometry } from './core/geometry'
+export type { BufferGeometryOptions } from './core/geometry'
+export { BufferGeometry } from './core/geometry'
 
 export type { StageOptions } from './core/stage'
 export { Stage } from './core/stage'
