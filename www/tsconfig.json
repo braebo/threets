@@ -20,6 +20,13 @@
 		"verbatimModuleSyntax": true,
 		"noFallthroughCasesInSwitch": true,
 		"forceConsistentCasingInFileNames": true,
-		"noPropertyAccessFromIndexSignature": true
-	}
+		"noPropertyAccessFromIndexSignature": true,
+
+		// JSR
+		"noImplicitReturns": true,
+
+		// Experimental Decorators
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": true
+	},
 }
