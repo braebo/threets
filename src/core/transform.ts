@@ -1,8 +1,8 @@
-import type { Vec3 } from './vectors'
-import type { Mat4 } from './matrix'
+import type { Vec3 } from './Vector3'
+import type { Mat4 } from './Matrix'
 
 import { subtractVectors, cross, normalize, Log } from './utils'
-import { Vector3 } from './vectors'
+import { Vector3 } from './Vector3'
 
 export interface TransformOptions {
 	identity: () => Mat4
@@ -36,13 +36,13 @@ export class Transform {
             ]
         })
 
-		// this.matrix = this.identity()
 		this.update()
 	}
 
 	identity: () => Mat4
 
 	update() {
+		console.log(new Error().stack)
 		this.matrix = this.identity()
 		this.translate(this.position.x, this.position.y, this.position.z)
 			.rotateX(this.rotation.x)
@@ -69,26 +69,9 @@ export class Transform {
 		];
 	}
 
-	static lookAt(
-		currentPosition: Vec3 | Vector3,
-		target: Vec3 | Vector3,
-		up: Vec3 | Vector3,
-	): Mat4 {
-		const zAxis = normalize(subtractVectors(currentPosition, target))
-		const xAxis = normalize(cross(up, zAxis))
-		const yAxis = normalize(cross(zAxis, xAxis))
-		// prettier-ignore
-		return [
-			xAxis.x, xAxis.y, xAxis.z, 0,
-			yAxis.x, yAxis.y, yAxis.z, 0,
-			zAxis.x, zAxis.y, zAxis.z, 0,
-			currentPosition.x,
-			currentPosition.y,
-			currentPosition.z,
-			1,
-		]
-	}
-
+	/**
+	 * A y-up right-handed orthographic projection matrix.
+	 */
 	static projection(width: number, height: number, depth: number): Mat4 {
 		// prettier-ignore
 		// //- Note: This matrix flips the Y axis so 0 is at the top.
@@ -98,6 +81,26 @@ export class Transform {
 			0, 0, 2 / depth, 0,
 			-1, 1, 0, 1,
 		];
+	}
+
+	lookAt(
+		target: Vec3 | Vector3,
+		up: Vec3 | Vector3,
+	): this {
+		const zAxis = normalize(subtractVectors(this.position, target))
+		const xAxis = normalize(cross(up, zAxis))
+		const yAxis = normalize(cross(zAxis, xAxis))
+		// prettier-ignore
+		this.matrix = [
+			xAxis.x, xAxis.y, xAxis.z, 0,
+			yAxis.x, yAxis.y, yAxis.z, 0,
+			zAxis.x, zAxis.y, zAxis.z, 0,
+			this.position.x,
+			this.position.y,
+			this.position.z,
+			1,
+		]
+		return this
 	}
 
 	translation(tx: number, ty: number, tz: number): Mat4 {
