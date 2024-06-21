@@ -1,5 +1,5 @@
 import { subtractVectors, cross, normalize } from './utils'
-import { Vector3 } from './vectors'
+import { Vector3 } from './Vector3'
 
 // prettier-ignore
 export type Mat4 = [
