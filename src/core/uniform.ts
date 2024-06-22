@@ -1,14 +1,14 @@
 export type UniformValueType =
 	// | { type: 'sampler2D'; value: Partial<TextureOptions> | null }
-	| { type: 'int'; value: (...args: any[]) => number }
-	| { type: 'float'; value: (...args: any[]) => number }
-	| { type: 'array'; value: (...args: any[]) => Uint8Array | Float32Array | number[] }
-	| { type: 'vec2'; value: (...args: any[]) => [number, number] }
-	| { type: 'vec3'; value: (...args: any[]) => [number, number, number] }
-	| { type: 'vec4'; value: (...args: any[]) => [number, number, number, number] }
-	| { type: 'mat2'; value: (...args: any[]) => Float32Array | number[] }
-	| { type: 'mat3'; value: (...args: any[]) => Float32Array | number[] }
-	| { type: 'mat4'; value: (...args: any[]) => Float32Array | number[] }
+	| { type: 'int'; value?: (...args: any[]) => number }
+	| { type: 'float'; value?: (...args: any[]) => number }
+	| { type: 'array'; value?: (...args: any[]) => Uint8Array | Float32Array | number[] }
+	| { type: 'vec2'; value?: (...args: any[]) => [number, number] }
+	| { type: 'vec3'; value?: (...args: any[]) => [number, number, number] }
+	| { type: 'vec4'; value?: (...args: any[]) => [number, number, number, number] }
+	| { type: 'mat2'; value?: (...args: any[]) => Float32Array | number[] }
+	| { type: 'mat3'; value?: (...args: any[]) => Float32Array | number[] }
+	| { type: 'mat4'; value?: (...args: any[]) => Float32Array | number[] }
 
 export type UniformOptions = {
 	name: string
@@ -20,8 +20,8 @@ export class Uniform {
 	location: WebGLUniformLocation
 	type: UniformValueType['type']
 
-	value: UniformValueType['value']
-	update: (...args: any[]) => Uniform
+	value?: UniformValueType['value']
+	update: (value?: any) => Uniform
 
 	constructor(
 		public gl: WebGL2RenderingContext,
@@ -40,9 +40,10 @@ export class Uniform {
 				'\nEnsure it is used in the shader program, or remove it from the uniform list.',
 			)
 		}
-		this.update = () => {
+
+		this.update = (value) => {
 			if (!this.location) return this
-			options.update(this.location, this.value())
+			options.update(this.location, value ?? this.value?.())
 			return this
 		}
 	}
