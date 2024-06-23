@@ -1,31 +1,53 @@
 /**
  * A callback that can be added to a ticker.
  */
-export type EventCallback<T extends any[] = any[]> = (...args: T) => void
+export type EventCallback<T extends any = any> = (...args: T[]) => void
+
+/**
+ * Options for {@link LinkedListener}.
+ */
+export interface LinkedListenerOptions {
+	/**
+	 * The context to call the callback with.
+	 * @default this
+	 */
+	ctx?: any
+	/**
+	 * If `true`, the listener will be removed after the first emit.
+	 * @default false
+	 */
+	once?: boolean
+}
 
 /**
  * A linked-list node with a callback function.
  *
  * Original source from {@link https://github.com/pixijs/pixijs/blob/dev/src/ticker/TickerListener.ts|pixijs}
  */
-export class LinkedListener<T extends any[] = any[]> {
+export class LinkedListener<T extends any = any> {
+	head: LinkedListener<T> | null = null
 	next: LinkedListener<T> | null = null
 	previous: LinkedListener<T> | null = null
 
+	private ctx: LinkedListener | null
+	private _once: boolean
 	private _disposed = false
 
 	constructor(
 		public cb: EventCallback<T> | null,
-		public ctx: any = this,
-		private readonly once = false,
-	) {}
+		options: LinkedListenerOptions,
+	) {
+		this.ctx = options?.ctx ?? this
+		this.head = options?.ctx ? options.ctx.head : this
+		this._once = options?.once ?? false
+	}
 
 	/**
 	 * Emit by calling the current callback function.
 	 * @param evm - The {@link EventManager} emitting.
 	 * @returns The next listener.
 	 */
-	emit(...args: T): LinkedListener | null {
+	emit(...args: T[]): LinkedListener | null {
 		this.assertNotDisposed()
 		if (this.cb) {
 			if (this.ctx) {
@@ -37,16 +59,29 @@ export class LinkedListener<T extends any[] = any[]> {
 
 		const redirect = this.next
 
-		if (this.once) this.dispose()
+		if (this._once) this.dispose()
 
 		return redirect
+	}
+
+	/**
+	 * Add a new callback to the list.  All new nodes should be created using this method.
+	 */
+	add(cb: EventCallback<T>, once = false): LinkedListener {
+		const node = new LinkedListener(cb, {
+			ctx: this,
+			once,
+		})
+		this._connect(node)
+
+		return node
 	}
 
 	/**
 	 * Connect to the list.
 	 * @param previous - Input node, previous listener
 	 */
-	connect(previous: LinkedListener): void {
+	private _connect(previous: LinkedListener): void {
 		this.assertNotDisposed()
 		this.previous = previous
 		if (previous.next) {
