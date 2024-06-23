@@ -1,11 +1,18 @@
 import type { Vec3 } from './Vector3'
-import type { Mat4 } from './Matrix'
+import type { Mat4 } from './Matrix4'
 
-import { subtractVectors, cross, normalize, Log } from './utils'
+import {
+	subtractVectors,
+	cross,
+	normalize,
+	// Log
+} from './utils'
 import { Vector3 } from './Vector3'
 
 export interface TransformOptions {
-	identity: () => Mat4
+	// position?: Parameters<Vector3['set']>[0]
+	// rotation?: Parameters<Vector3['set']>[0]
+	// scale?: Parameters<Vector3['set']>[0]
 	position?: Vector3
 	rotation?: Vector3
 	scale?: Vector3
@@ -14,7 +21,7 @@ export interface TransformOptions {
 /**
  * A 3D transformation matrix.
  */
-@Log('Transform')
+// @Log('Transform')
 export class Transform {
 	position: Vector3
 	rotation: Vector3
@@ -22,27 +29,27 @@ export class Transform {
 	matrix!: Mat4
 
 	constructor(options?: TransformOptions) {
+		// this.position = new Vector3(options?.position)
+		// this.rotation = new Vector3(options?.rotation)
+		// this.scale = new Vector3(options?.scale)
 		this.position = options?.position ?? new Vector3(0)
 		this.rotation = options?.rotation ?? new Vector3(0)
 		this.scale = options?.scale ?? new Vector3(1)
 
-		// prettier-ignore
-		this.identity = options?.identity ?? (() => {
-            return [
-                1, 0, 0, 0,
-                0, 1, 0, 0,
-                0, 0, 1, 0,
-                0, 0, 0, 1,
-            ]
-        })
-
 		this.update()
 	}
 
-	identity: () => Mat4
+	identity(): Mat4 {
+		// prettier-ignore
+		return [
+			1, 0, 0, 0,
+			0, 1, 0, 0,
+			0, 0, 1, 0,
+			0, 0, 0, 1,
+		]
+	}
 
 	update() {
-		console.log(new Error().stack)
 		this.matrix = this.identity()
 		this.translate(this.position.x, this.position.y, this.position.z)
 			.rotateX(this.rotation.x)
@@ -83,27 +90,7 @@ export class Transform {
 		];
 	}
 
-	lookAt(
-		target: Vec3 | Vector3,
-		up: Vec3 | Vector3,
-	): this {
-		const zAxis = normalize(subtractVectors(this.position, target))
-		const xAxis = normalize(cross(up, zAxis))
-		const yAxis = normalize(cross(zAxis, xAxis))
-		// prettier-ignore
-		this.matrix = [
-			xAxis.x, xAxis.y, xAxis.z, 0,
-			yAxis.x, yAxis.y, yAxis.z, 0,
-			zAxis.x, zAxis.y, zAxis.z, 0,
-			this.position.x,
-			this.position.y,
-			this.position.z,
-			1,
-		]
-		return this
-	}
-
-	translation(tx: number, ty: number, tz: number): Mat4 {
+	static translation(tx: number, ty: number, tz: number): Mat4 {
 		// prettier-ignore
 		return [
 			1,  0,  0,  0,
@@ -113,7 +100,7 @@ export class Transform {
 	  ];
 	}
 
-	rotationX(angleInRadians: number): Mat4 {
+	static rotationX(angleInRadians: number): Mat4 {
 		const c = Math.cos(angleInRadians)
 		const s = Math.sin(angleInRadians)
 		// prettier-ignore
@@ -125,7 +112,7 @@ export class Transform {
 	  ];
 	}
 
-	rotationY(angleInRadians: number): Mat4 {
+	static rotationY(angleInRadians: number): Mat4 {
 		const c = Math.cos(angleInRadians)
 		const s = Math.sin(angleInRadians)
 		// prettier-ignore
@@ -137,7 +124,7 @@ export class Transform {
 	  ];
 	}
 
-	rotationZ(angleInRadians: number): Mat4 {
+	static rotationZ(angleInRadians: number): Mat4 {
 		const c = Math.cos(angleInRadians)
 		const s = Math.sin(angleInRadians)
 		// prettier-ignore
@@ -149,7 +136,7 @@ export class Transform {
 	  ];
 	}
 
-	scaling(sx: number, sy: number, sz: number): Mat4 {
+	static scaling(sx: number, sy: number, sz: number): Mat4 {
 		// prettier-ignore
 		return [
 			sx, 0, 0, 0,
@@ -159,28 +146,88 @@ export class Transform {
 		]
 	}
 
+	// prettier-ignore
+	static inverse(m: Mat4): Mat4 {
+		const [
+			m00, m01, m02, m03,
+			m10, m11, m12, m13,
+			m20, m21, m22, m23,
+			m30, m31, m32, m33
+		] = m;
+
+		const det = m00 * (m11 * (m22 * m33 - m23 * m32) - m12 * (m21 * m33 - m23 * m31) + m13 * (m21 * m32 - m22 * m31)) -
+					m01 * (m10 * (m22 * m33 - m23 * m32) - m12 * (m20 * m33 - m23 * m30) + m13 * (m20 * m32 - m22 * m30)) +
+					m02 * (m10 * (m21 * m33 - m23 * m31) - m11 * (m20 * m33 - m23 * m30) + m13 * (m20 * m31 - m21 * m30)) -
+					m03 * (m10 * (m21 * m32 - m22 * m31) - m11 * (m20 * m32 - m22 * m30) + m12 * (m20 * m31 - m21 * m30));
+
+		if (det === 0) {
+			throw new Error("Matrix is not invertible");
+		}
+
+		const invDet = 1 / det;
+
+		return [
+			invDet * (m11 * (m22 * m33 - m23 * m32) - m12 * (m21 * m33 - m23 * m31) + m13 * (m21 * m32 - m22 * m31)),
+			invDet * -(m01 * (m22 * m33 - m23 * m32) - m02 * (m21 * m33 - m23 * m31) + m03 * (m21 * m32 - m22 * m31)),
+			invDet * (m01 * (m12 * m33 - m13 * m32) - m02 * (m11 * m33 - m13 * m31) + m03 * (m11 * m32 - m12 * m31)),
+			invDet * -(m01 * (m12 * m23 - m13 * m22) - m02 * (m11 * m23 - m13 * m21) + m03 * (m11 * m22 - m12 * m21)),
+			invDet * -(m10 * (m22 * m33 - m23 * m32) - m12 * (m20 * m33 - m23 * m30) + m13 * (m20 * m32 - m22 * m30)),
+			invDet * (m00 * (m22 * m33 - m23 * m32) - m02 * (m20 * m33 - m23 * m30) + m03 * (m20 * m32 - m22 * m30)),
+			invDet * -(m00 * (m12 * m33 - m13 * m32) - m02 * (m10 * m33 - m13 * m30) + m03 * (m10 * m32 - m12 * m30)),
+			invDet * (m00 * (m12 * m23 - m13 * m22) - m02 * (m10 * m23 - m13 * m20) + m03 * (m10 * m22 - m12 * m20)),
+			invDet * (m10 * (m21 * m33 - m23 * m31) - m11 * (m20 * m33 - m23 * m30) + m13 * (m20 * m31 - m21 * m30)),
+			invDet * -(m00 * (m21 * m33 - m23 * m31) - m01 * (m20 * m33 - m23 * m30) + m03 * (m20 * m31 - m21 * m30)),
+			invDet * (m00 * (m11 * m33 - m13 * m31) - m01 * (m10 * m33 - m13 * m30) + m03 * (m10 * m31 - m11 * m30)),
+			invDet * -(m00 * (m11 * m23 - m13 * m21) - m01 * (m10 * m23 - m13 * m20) + m03 * (m10 * m21 - m11 * m20)),
+			invDet * -(m10 * (m21 * m32 - m22 * m31) - m11 * (m20 * m32 - m22 * m30) + m12 * (m20 * m31 - m21 * m30)),
+			invDet * (m00 * (m21 * m32 - m22 * m31) - m01 * (m20 * m32 - m22 * m30) + m02 * (m20 * m31 - m21 * m30)),
+			invDet * -(m00 * (m11 * m32 - m12 * m31) - m01 * (m10 * m32 - m12 * m30) + m02 * (m10 * m31 - m11 * m30)),
+			invDet * (m00 * (m11 * m22 - m12 * m21) - m01 * (m10 * m22 - m12 * m20) + m02 * (m10 * m21 - m11 * m20))
+		];
+	}
+
+	lookAt(target: Vec3 | Vector3, up: Vec3 | Vector3): this {
+		const zAxis = normalize(subtractVectors(this.position, target))
+		const xAxis = normalize(cross(up, zAxis))
+		const yAxis = normalize(cross(zAxis, xAxis))
+		// prettier-ignore
+		this.matrix = [
+			xAxis.x, xAxis.y, xAxis.z, 0,
+			yAxis.x, yAxis.y, yAxis.z, 0,
+			zAxis.x, zAxis.y, zAxis.z, 0,
+			// this.position.x,
+			// this.position.y,
+			// this.position.z,
+			-(xAxis.x * this.position.x + xAxis.y * this.position.y + xAxis.z * this.position.z),
+			-(yAxis.x * this.position.x + yAxis.y * this.position.y + yAxis.z * this.position.z),
+			-(zAxis.x * this.position.x + zAxis.y * this.position.y + zAxis.z * this.position.z),
+			1,
+		]
+		return this
+	}
+
 	translate(tx: number, ty: number, tz: number): this {
-		this.matrix = this.multiply(this.matrix, this.translation(tx, ty, tz))
+		this.matrix = this.multiply(this.matrix, Transform.translation(tx, ty, tz))
 		return this
 	}
 
 	rotateX(angleInRadians: number): this {
-		this.matrix = this.multiply(this.matrix, this.rotationX(angleInRadians))
+		this.matrix = this.multiply(this.matrix, Transform.rotationX(angleInRadians))
 		return this
 	}
 
 	rotateY(angleInRadians: number): this {
-		this.matrix = this.multiply(this.matrix, this.rotationY(angleInRadians))
+		this.matrix = this.multiply(this.matrix, Transform.rotationY(angleInRadians))
 		return this
 	}
 
 	rotateZ(angleInRadians: number): this {
-		this.matrix = this.multiply(this.matrix, this.rotationZ(angleInRadians))
+		this.matrix = this.multiply(this.matrix, Transform.rotationZ(angleInRadians))
 		return this
 	}
 
 	scaleBy(x: number, y: number, z: number): this {
-		this.matrix = this.multiply(this.matrix, this.scaling(x, y, z))
+		this.matrix = this.multiply(this.matrix, Transform.scaling(x, y, z))
 		return this
 	}
 
