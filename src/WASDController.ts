@@ -1,5 +1,5 @@
 import type { Stage } from './core/Stage'
-// import { Log } from './core/utils'
+import { Log } from './core/utils'
 
 export type WASDCommand = (typeof WASD_COMMANDS)[number]
 export const WASD_COMMANDS = ['w', 'a', 's', 'd', 'q', 'e', 'shift', 'control', 'escape'] as const
@@ -54,7 +54,7 @@ export interface WASDControllerOptions {
  * controls.speed = 0.1
  * ```
  */
-// @Log('OrbitControls')
+@Log('OrbitControls', { exclude: [''] })
 export class WASDController {
 	initialized = false
 	autoUpdate = true
@@ -72,6 +72,7 @@ export class WASDController {
 	 * Whether any control is currently active.
 	 */
 	active = false
+	_dirty = true
 
 	state: Record<WASDCommand, boolean> = {
 		w: false,
@@ -91,22 +92,22 @@ export class WASDController {
 
 	private moveset = {
 		w: () => {
-			this.transform.position.setZ(this.transform.position.z + this.speed)
+			this.transform.position.z = this.transform.position.z + this.speed
 		},
 		a: () => {
-			this.transform.position.setX(this.transform.position.x - this.speed)
+			this.transform.position.x = this.transform.position.x - this.speed
 		},
 		s: () => {
-			this.transform.position.setZ(this.transform.position.z - this.speed)
+			this.transform.position.z = this.transform.position.z - this.speed
 		},
 		d: () => {
-			this.transform.position.setX(this.transform.position.x + this.speed)
+			this.transform.position.x = this.transform.position.x + this.speed
 		},
 		q: () => {
-			this.transform.position.setY(this.transform.position.y - this.speed)
+			this.transform.position.y = this.transform.position.y - this.speed
 		},
 		e: () => {
-			this.transform.position.setY(this.transform.position.y + this.speed)
+			this.transform.position.y = this.transform.position.y + this.speed
 		},
 		shift: () => {
 			this._speedMultiplier = 2
@@ -124,7 +125,11 @@ export class WASDController {
 	 */
 	private moves: WASDCommand[] = []
 
-	constructor(public stage: Stage, options?: WASDControllerOptions) {
+	constructor(
+		public stage: Stage,
+		options?: WASDControllerOptions,
+	) {
+		stage.camera.controllers.wasd = this
 		this.target = options?.eventTarget ?? 'window'
 		this.capturePointerLock = options?.capturePointerLock ?? false
 		this.enabled = options?.enabled ?? true
@@ -152,7 +157,9 @@ export class WASDController {
 		this.target.addEventListener('keyup', this.onKeyUp as EventListener)
 		this.target.addEventListener('blur', this.cancel)
 
-		if (this.stage && (this.autoUpdate ?? true)) {
+		this.transform.position.set(this.stage.camera.transform.position)
+
+		if (this.autoUpdate ?? true) {
 			this.update()
 		}
 	}
@@ -181,17 +188,21 @@ export class WASDController {
 	}
 
 	/**
-	 * Call active {@link moves}.
+	 * Run all active {@link moves}.
+	 * @returns `false` if the controller is disabled or inactive, otherwise `true`.
 	 */
-	update() {
-		if (this.enabled && this.active) {
-			for (let i = 0; i < this.moves.length; i++) {
-				this.moveset[this.moves[i]]()
-			}
-			if (this.autoUpdate) {
-				this.stage.camera.transform.update()
-			}
+	update(): boolean {
+		if (!this.enabled) return false
+		if (!this.active && !this._dirty) return false
+
+		for (let i = 0; i < this.moves.length; i++) {
+			this.moveset[this.moves[i]]()
 		}
+		this._dirty = true
+		if (this.autoUpdate) {
+			this.stage.camera.update()
+		}
+		return true
 	}
 
 	private _activate(key: WASDCommand) {

@@ -1,13 +1,13 @@
 //? Core
 
 export { Uniform, type UniformOptions, type UniformValueType } from './core/Uniform'
-export { BufferGeometry, type BufferGeometryOptions } from './core/BufferGeometry'
+export { Geometry, type GeometryOptions } from './core/Geometry'
 export { Transform, type TransformOptions } from './core/Transform'
 export { Camera, type CameraOptions } from './core/Camera'
 export { Stage, type StageOptions } from './core/Stage'
 export { Vector2, type Vec2 } from './core/Vector2'
 export { Vector3, type Vec3 } from './core/Vector3'
-export { Matrix4, type Mat4 } from './core/Matrix'
+export { Matrix4, type Mat4 } from './core/Matrix4'
 
 //? Controllers
 

@@ -133,8 +133,6 @@ export class OrbitController implements OrbitControllerOptions {
 		if (options?.capturePointerLock) this.capturePointerLock = options.capturePointerLock
 		if (options?.zoomSpeed) this.zoomSpeed = options.zoomSpeed
 
-		stage.camera.controllers.orbit ??= this
-
 		if (options?.autoInit ?? true) {
 			this.init()
 		}
@@ -178,8 +176,6 @@ export class OrbitController implements OrbitControllerOptions {
 		}
 	}
 
-	private _tempQuaternion = new Quaternion()
-
 	/**
 	 * Update the camera's position based on the current spherical coordinates.
 	 * @returns `false` if the controller is disabled or inactive, otherwise `true`.
@@ -216,8 +212,9 @@ export class OrbitController implements OrbitControllerOptions {
 		// this.position.copy(this.target).add(this._tempVec3)
 
 		// // Update quaternion
-		this._tempQuaternion.fromEuler(this._sphericalDelta.phi, this._sphericalDelta.theta, 0)
-		this._quaternion.multiply(this._tempQuaternion)
+		this._quaternion.multiply(
+			Quaternion.fromEuler(this._sphericalDelta.phi, this._sphericalDelta.theta, 0),
+		)
 
 		// Reset deltas
 		this._sphericalDelta.set(0, 0, 0)
@@ -266,6 +263,15 @@ export class OrbitController implements OrbitControllerOptions {
 		)
 
 		this._pointerStart.copy(this._pointerEnd)
+
+		// // Update spherical delta for rotation
+		// this._sphericalDelta.theta -=
+		// 	((2 * Math.PI * delta.x) / (this.eventTargetWidth() || 1)) * this.speed
+		// this._sphericalDelta.phi -=
+		// 	((Math.PI * delta.y) / (this.eventTargetHeight() || 1)) * this.speed
+
+		// this._pointerStart.x = this._pointerEnd.x
+		// this._pointerStart.y = this._pointerEnd.y
 	}
 
 	onWheel = (event: WheelEvent) => {

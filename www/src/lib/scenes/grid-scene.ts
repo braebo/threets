@@ -1,44 +1,80 @@
-import { Gui } from '../../../../../../../fractils/src/lib/gui/gui'
+import { Gui } from '../../../../../../../fractils/src/lib/gui/Gui'
+import { WASDController, OrbitController, Vector3 } from 'threets'
 import { Stage } from 'threets'
-import {
-	WASDController,
-	OrbitController,
-} from 'threets'
 
 export async function gridScene(selector: string) {
 	const stage = new Stage({
 		canvas: selector,
-		vertex: `#version 300 es
-precision mediump float;
-
-in vec4 a_position;
-uniform vec2 u_resolution;
-uniform mat4 u_camera;
-out vec2 v_uv;
-
-void main() {
-    v_uv = a_position.xy * 0.5 + 0.5;
-	gl_Position = u_camera * a_position;
-}`,
+		camera: {
+			transform: {
+				// position: { x: 0, y: 5, z: -10 },
+				// position: new Vector3({ x: 0, y: 5, z: -10 }),
+			},
+		},
 		fragment: `#version 300 es
 precision mediump float;
 
 in vec2 v_uv;
+// uniform vec2 u_resolution;
 out vec4 fragColor;
 
 void main() {
-   fragColor = vec4(v_uv.x, v_uv.y, v_uv.y + v_uv.x, 1.0);
+   fragColor = vec4(v_uv, v_uv.x / v_uv.x, 1.0);
 }`,
 	})
 
-	stage.camera.transform.position.setY(5).setZ(-10)
+	setTimeout(() => {
+		stage.camera.transform.position.set({ x: 0, y: 15, z: -10 })
+	}, 100)
 
-	const controller = new OrbitController(stage)
-	const controller2 = new WASDController(stage, { speed: 0.1 })
+	const orbit_controller = new OrbitController(stage, {
+		speed: 2,
+		target: new Vector3(1, 5, 5),
+	})
+	const wasd_controller = new WASDController(stage, { speed: 0.1 })
 
 	// stage.addSimpleQuad()
 
 	createGridGeometry()
+
+	let error = stage.gl?.getError()
+	if (error != stage.gl?.NO_ERROR) {
+		console.error('WebGL Error: ' + error)
+	}
+
+	const fps = 25
+	const interval = 1000 / fps
+
+	let now: number
+	let then = Date.now()
+	let delta = 0
+
+	function render() {
+		requestAnimationFrame(render)
+		now = Date.now()
+		delta = now - then
+
+		if (delta > interval) {
+			then = now - (delta % interval)
+			stage.render()
+			orbit_controller.update()
+			wasd_controller.update()
+		}
+	}
+
+	render()
+
+	const gui = new Gui()
+	gui.addNumber({
+		title: 'speed',
+		binding: {
+			key: 'speed',
+			target: orbit_controller,
+		},
+		min: 0.01,
+		max: 10,
+		step: 0.01,
+	})
 
 	function createGridGeometry() {
 		const size = 100
@@ -60,48 +96,5 @@ void main() {
 		})
 	}
 
-	let error = stage.gl?.getError()
-	if (error != stage.gl?.NO_ERROR) {
-		console.error('WebGL Error: ' + error)
-	}
-
-	// function render() {
-	// 	stage.render()
-	// 	controller.update()
-	// 	requestAnimationFrame(render)
-	// }
-	let fps = 60, // Desired FPS
-		now,
-		then = Date.now(),
-		interval = 1000 / fps,
-		delta
-
-	function render() {
-		requestAnimationFrame(render)
-		now = Date.now()
-		delta = now - then
-
-		if (delta > interval) {
-			then = now - (delta % interval)
-			stage.render()
-			controller.update()
-			controller2.update()
-		}
-	}
-
-	render()
-
-	const gui = new Gui()
-	gui.addNumber({
-		title: 'speed',
-		binding: {
-			key: 'speed',
-			target: controller,
-		},
-		min: 0.01,
-		max: 10,
-		step: 0.01,
-	})
-
-	return { stage, controller }
+	return { stage }
 }

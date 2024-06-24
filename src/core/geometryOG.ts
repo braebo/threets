@@ -29,7 +29,7 @@ export function isBufferGeometry(object: any): object is BufferGeometry {
 	return typeof object === 'object' && object.__type === 'BufferGeometry'
 }
 
-@Log('BufferGeometry')
+// @Log('BufferGeometry')
 export class BufferGeometry {
 	__type = 'BufferGeometry'
 	name: string
