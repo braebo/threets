@@ -56,17 +56,39 @@ const hexColorHash = (name: string): string =>
 		.slice(1)
 		.replace(/^./, 'F')
 
+type LogOptions =
+	| {
+			exclude?: string[]
+			include?: never
+	  }
+	| {
+			exclude?: never
+			include?: string[]
+	  }
+
 /**
  * Dev-time logging of class method calls.
  */
-export function Log(id: string, blacklist = [] as string[]): ClassDecorator {
+export function Log(
+	id: string,
+	{ exclude = [], include = undefined } = {} as LogOptions,
+): ClassDecorator {
 	return function (target: Function) {
 		for (const key of Object.getOwnPropertyNames(target.prototype)) {
-			const method = target.prototype[key]
-			if (key !== 'constructor' && typeof method === 'function') {
-				const color = hexColorHash(key)
-				target.prototype[key] = function (...args: any[]) {
-					if (DEV && !key.match(/_setUniform/) && !blacklist.includes(key)) {
+			if (key === 'constructor') continue
+
+			const descriptor = Object.getOwnPropertyDescriptor(target.prototype, key)
+			if (!descriptor) continue
+
+			if (typeof descriptor.value === 'function') {
+				const originalMethod = descriptor.value
+				descriptor.value = function (...args: any[]) {
+					if (
+						DEV &&
+						!(include?.length && include.includes(key)) &&
+						!exclude.includes(key)
+					) {
+						const color = hexColorHash(key)
 						console.log(
 							`%c${id} : ${key}%c()`,
 							`color:${color}`,
@@ -77,9 +99,77 @@ export function Log(id: string, blacklist = [] as string[]): ClassDecorator {
 							},
 						)
 					}
-					return method.apply(this, args)
+					return originalMethod.apply(this, args)
 				}
 			}
+
+			// if (typeof descriptor.get === 'function') {
+			// 	const getter = descriptor.get
+			// 	descriptor.get = function () {
+			// 		if (DEV && !blacklist.includes(key)) {
+			// 			const color = hexColorHash(key)
+			// 			console.log(
+			// 				`%c${id} %cget %c${key}%c`,
+			// 				`color:${color}`,
+			// 				`color:grey`,
+			// 				`color:${color}`,
+			// 				`color:inherit`,
+			// 				{
+			// 					this: this,
+			// 				},
+			// 			)
+			// 		}
+			// 		return getter!.call(this)
+			// 	}
+			// }
+
+			if (typeof descriptor.set === 'function') {
+				const setter = descriptor.set
+				descriptor.set = function (value: any) {
+					if (DEV && !exclude.includes(key)) {
+						const color = hexColorHash(key)
+						console.log(
+							`%c${id} : %cset %c${key}%c =`,
+							`color:${color}`,
+							`color:grey`,
+							`color:${color}`,
+							`color:inherit`,
+							value,
+							{
+								this: this,
+							},
+						)
+					}
+					return setter!.call(this, value)
+				}
+			}
+
+			Object.defineProperty(target.prototype, key, descriptor)
 		}
 	}
 }
+// export function Log(id: string, blacklist = [] as string[]): ClassDecorator {
+// 	return function (target: Function) {
+// 		for (const key of Object.getOwnPropertyNames(target.prototype)) {
+// 			console.log(key)
+// 			const method = target.prototype[key] // If this is a `getter` _and_ the initial construction phase, this crashes the app with: "Cannot read properties of undefined..."
+// 			if (key !== 'constructor' && typeof method === 'function') {
+// 				const color = hexColorHash(key)
+// 				target.prototype[key] = function (...args: any[]) {
+// 					if (DEV && !blacklist.includes(key)) {
+// 						console.log(
+// 							`%c${id} : ${key}%c()`,
+// 							`color:${color}`,
+// 							`color:inherit`,
+// 							...args,
+// 							{
+// 								this: this,
+// 							},
+// 						)
+// 					}
+// 					return method.apply(this, args)
+// 				}
+// 			}
+// 		}
+// 	}
+// }
