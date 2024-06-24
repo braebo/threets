@@ -1,12 +1,15 @@
 import type { QuerySelector } from './types'
 
-import { BufferGeometry, type BufferGeometryOptions } from './geometry'
-import { Uniform, type UniformOptions } from './uniform'
-import { Camera, type CameraOptions } from './camera'
-import { Transform, type TransformOptions } from './transform'
-import { LinkedListener } from './listener'
-import { select, Log } from './utils'
-import { isVector3, Vector3, type Vec3 } from './vectors'
+import { Geometry, type GeometryOptions } from './Geometry'
+import { Vector3, isVector3, type Vec3 } from './Vector3'
+import { Uniform, type UniformOptions } from './Uniform'
+import { Camera, type CameraOptions } from './Camera'
+import { LinkedListener } from './Listener'
+import { Transform } from './Transform'
+import {
+	select,
+	// Log
+} from './utils'
 
 export interface StageOptions {
 	canvas?: HTMLCanvasElement | QuerySelector
@@ -16,11 +19,11 @@ export interface StageOptions {
 	fragment?: string
 	depth?: number
 	camera?: CameraOptions
-	geometries?: BufferGeometryOptions[]
+	geometries?: GeometryOptions[]
 	uniforms?: UniformOptions[]
 }
 
-@Log('Stage', ['render', 'update', '_emitOnUpdate'])
+// @Log('Stage', ['render', 'update', '_emitOnUpdate'])
 export class Stage {
 	opts: StageOptions
 
@@ -31,17 +34,18 @@ export class Stage {
 	gl: WebGL2RenderingContext | null = null
 	program: WebGLProgram | null = null
 
-	uniforms: Map<'u_resolution' | 'u_camera' | string, Uniform> = new Map()
-	geometries: Map<'a_position' | string, BufferGeometry> = new Map()
+	uniforms: Map<
+		'u_resolution' | 'u_modelMatrix' | 'u_viewMatrix' | 'u_projectionMatrix' | string,
+		Uniform
+	> = new Map()
+	geometries: Map<'a_position' | string, Geometry> = new Map()
 
 	camera!: Camera
 	transform!: Transform
 
 	worldOrigin = new Transform().matrix
 
-	uResolution!: Uniform
-	uMatrix!: Uniform
-	uTime!: Uniform
+	uModelMatrix!: Uniform
 
 	vertexShader: WebGLShader | null = null
 	vertex: string | null = `#version 300 es
@@ -49,12 +53,16 @@ precision mediump float;
 
 in vec4 a_position;
 uniform vec2 u_resolution;
-uniform mat4 u_camera;
+uniform mat4 u_modelMatrix;
+uniform mat4 u_viewMatrix;
+uniform mat4 u_projectionMatrix;
 out vec2 v_uv;
 
 void main() {
     v_uv = a_position.xy * 0.5 + 0.5;
-    gl_Position = a_position;
+    vec4 worldPosition = u_modelMatrix * a_position;
+    vec4 viewPosition = u_viewMatrix * worldPosition;
+    gl_Position = u_projectionMatrix * viewPosition;
 }`
 
 	fragmentShader: WebGLShader | null = null
@@ -142,6 +150,18 @@ void main() {
 
 		this.program = this._createProgram()
 
+		//* Setup Camera
+
+		this.camera = new Camera(this, {
+			fov: this.opts.camera?.fov ?? 60,
+			aspect: this.opts.camera?.aspect ?? this.canvas.width / this.canvas.height,
+			near: this.opts.camera?.near ?? 1,
+			far: this.opts.camera?.far ?? 2000,
+			transform: this.opts.camera?.transform ?? {
+				// position: new Vector3({ x: 0, y: 10, z: -10 }),
+			},
+		})
+
 		//* Setup Uniforms
 
 		this._createDefaultUniforms()
@@ -160,20 +180,6 @@ void main() {
 			}
 		}
 
-		//* Setup Camera
-
-		this.camera = new Camera({
-			fov: this.opts.camera?.fov ?? 60,
-			aspect: this.opts.camera?.aspect ?? this.canvas.width / this.canvas.height,
-			zNear: this.opts.camera?.zNear ?? 1,
-			zFar: this.opts.camera?.zFar ?? 2000,
-			transform:
-				this.opts.camera?.transform ??
-				{
-					// position: new Vector3({ x: -5, y: 5, z: -10 }),
-				},
-		})
-
 		this.addUniform({
 			name: 'u_camera',
 			type: 'array',
@@ -184,32 +190,32 @@ void main() {
 		})
 	}
 
-	addUniform(uniformOrOptions: Uniform | UniformOptions) {
+	addUniform(uniformOrOptions: Uniform | UniformOptions): Uniform {
 		if (!this.gl) throw new Error('WebGL2 context not found')
 		if (!this.program) throw new Error('Program not found')
 
 		if (uniformOrOptions instanceof Uniform) {
 			this.uniforms.set(uniformOrOptions.name, uniformOrOptions)
 		} else {
-			this.uniforms.set(
-				uniformOrOptions.name,
-				new Uniform(this.gl, this.program, uniformOrOptions),
-			)
+			uniformOrOptions = new Uniform(this.gl, this.program, uniformOrOptions)
+			this.uniforms.set(uniformOrOptions.name, uniformOrOptions)
 		}
+
+		return uniformOrOptions
 	}
 
-	addGeometry(options: BufferGeometryOptions): BufferGeometry {
+	addGeometry(options: GeometryOptions): Geometry {
 		if (!this.gl) throw new Error('WebGL2 context not found')
 		if (!this.program) throw new Error('Program not found')
 
-		const geometry = new BufferGeometry(this.gl, this.program, options)
+		const geometry = new Geometry(this, options)
 		this.geometries.set(options.name, geometry)
 		return geometry
 	}
 
 	update() {
 		for (const uniform of this.uniforms.values()) {
-			uniform.update(uniform.value())
+			uniform.update()
 		}
 		this._emitOnUpdate()
 	}
@@ -218,7 +224,7 @@ void main() {
 		if (!this._onUpdateListeners) {
 			this._onUpdateListeners ??= new LinkedListener(callback, this)
 		} else {
-			this._onUpdateListeners.connect(new LinkedListener(callback, this))
+			this._onUpdateListeners._connect(new LinkedListener(callback, this))
 		}
 	}
 	private _onUpdateListeners?: LinkedListener
@@ -287,6 +293,33 @@ void main() {
 			value: () => performance.now() / 1000,
 			update: (location, value) => {
 				this.gl!.uniform1f(location, value)
+			},
+		})
+
+		this.uModelMatrix = this.addUniform({
+			name: 'u_modelMatrix',
+			type: 'mat4',
+			value: () => this.worldOrigin, // Default to identity matrix
+			update: (location, value) => {
+				this.gl!.uniformMatrix4fv(location, false, value)
+			},
+		} as UniformOptions)
+
+		this.addUniform({
+			name: 'u_viewMatrix',
+			type: 'mat4',
+			value: () => this.camera.viewMatrix,
+			update: (location, value) => {
+				this.gl!.uniformMatrix4fv(location, false, value)
+			},
+		})
+
+		this.addUniform({
+			name: 'u_projectionMatrix',
+			type: 'mat4',
+			value: () => this.camera.projectionMatrix,
+			update: (location, value) => {
+				this.gl!.uniformMatrix4fv(location, false, value)
 			},
 		})
 	}
@@ -370,4 +403,82 @@ void main() {
 		return this
 	}
 }
+
+// export type GeometryOptions = {
+// 	transform?: TransformOptions
+// 	buffer?: GeometryOptions
+// }
+
+// class Geometry {
+// 	transform: Transform
+// 	buffer: Geometry
+
+// 	constructor(
+// 		public stage: Stage,
+// 		options?: GeometryOptions,
+// 	) {
+// 		this.stage = stage
+// 		this.transform = new Transform()
+// 		this.buffer = new Geometry(
+// 			this.stage,
+// 			options?.buffer ?? { name: 'a_position', positions: new Float32Array() },
+// 		)
+// 	}
+// }
+
+export interface PlaneOptions extends GeometryOptions {
+	scale: number
+	width: number
+	height: number
+	subdivisions: number
+}
+
+export class Plane extends Geometry {
+	get scale(): Vector3 {
+		return this.transform?.scale
+	}
+	set scale(value: number | Vector3 | Vec3) {
+		this.transform?.scaleBy(...(isVector3(value) ? value : new Vector3(value)).toArray())
+	}
+
+	constructor(stage: Stage, options?: Partial<PlaneOptions>) {
+		const opts = {
+			width: options?.width ?? 1,
+			height: options?.height ?? 1,
+			subdivisions: options?.subdivisions ?? 1,
+			transform: options?.transform,
+		}
+		const { width, height, subdivisions } = opts
+
+		const positions = []
+		const indices = []
+
+		const halfWidth = width / 2
+		const stepX = width / subdivisions
+
+		const halfHeight = height / 2
+		const stepY = height / subdivisions
+
+		let index = 0
+		for (let y = -halfHeight; y < halfHeight; y += stepY) {
+			for (let x = -halfWidth; x < halfWidth; x += stepX) {
+				positions.push(x, y, 0)
+				positions.push(x + stepX, y, 0)
+				positions.push(x, y + stepY, 0)
+				positions.push(x + stepX, y + stepY, 0)
+
+				indices.push(index, index + 1, index + 2)
+				indices.push(index + 1, index + 3, index + 2)
+
+				index += 4
+			}
+		}
+
+		super(stage, {
+			...options,
+			name: options?.name ?? 'a_position',
+			positions: options?.positions ?? new Float32Array(),
+			indices: options?.indices,
+		})
+	}
 }
