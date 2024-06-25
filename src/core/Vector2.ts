@@ -175,8 +175,8 @@ export class Vector2 {
 		this._listeners ??= new LinkedListener(callback)
 		this._listeners.add(callback)
 	}
-	private _listeners: LinkedListener<[Vector2]> | null = null
-	private _next: LinkedListener<[Vector2]> | null = null
+	private _listeners: LinkedListener | null = null
+	private _next: LinkedListener | null = null
 	private _emit() {
 		this._next = this._listeners
 		while (this._next) {

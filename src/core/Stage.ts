@@ -157,9 +157,11 @@ void main() {
 			aspect: this.opts.camera?.aspect ?? this.canvas.width / this.canvas.height,
 			near: this.opts.camera?.near ?? 1,
 			far: this.opts.camera?.far ?? 2000,
-			transform: this.opts.camera?.transform ?? {
-				// position: new Vector3({ x: 0, y: 10, z: -10 }),
-			},
+			transform:
+				this.opts.camera?.transform ??
+				{
+					// position: new Vector3({ x: 0, y: 10, z: -10 }),
+				},
 		})
 
 		//* Setup Uniforms
@@ -221,13 +223,10 @@ void main() {
 	}
 
 	onUpdate(callback: () => void) {
-		if (!this._onUpdateListeners) {
-			this._onUpdateListeners ??= new LinkedListener(callback, this)
-		} else {
-			this._onUpdateListeners._connect(new LinkedListener(callback, this))
-		}
+		this._onUpdateListeners ??= new LinkedListener(callback, { ctx: this })
+		this._onUpdateListeners.add(callback, { ctx: this })
 	}
-	private _onUpdateListeners?: LinkedListener
+	private _onUpdateListeners?: LinkedListener | null
 	private _emitOnUpdate() {
 		let listener = this._onUpdateListeners as LinkedListener | null
 		while (listener) {

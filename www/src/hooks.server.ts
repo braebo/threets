@@ -7,6 +7,7 @@ export const handle: Handle = ({ event, resolve }) => {
 
 	let page = ''
 	return resolve(event, {
+		// @ts-ignore
 		transformPageChunk: ({ html, done }) => {
 			page += html
 			if (done) return page.replace('%threets.theme%', event.locals.theme)

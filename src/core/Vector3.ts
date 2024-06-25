@@ -211,8 +211,8 @@ export class Vector3 {
 		this._listeners.add(callback)
 		return this._listeners.disconnect
 	}
-	private _listeners: LinkedListener<Vector3> | null = null
-	private _next: LinkedListener<Vector3> | null = null
+	private _listeners: LinkedListener | null = null
+	private _next: LinkedListener | null = null
 	private _emit() {
 		this._next = this._listeners
 		while (this._next) {

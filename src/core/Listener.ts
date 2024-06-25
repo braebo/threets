@@ -24,21 +24,21 @@ export interface LinkedListenerOptions {
  *
  * Original source from {@link https://github.com/pixijs/pixijs/blob/dev/src/ticker/TickerListener.ts|pixijs}
  */
-export class LinkedListener<T extends any = any> {
-	head: LinkedListener<T> | null = null
-	next: LinkedListener<T> | null = null
-	previous: LinkedListener<T> | null = null
+export class LinkedListener {
+	head: LinkedListener | null = null
+	next: LinkedListener | null = null
+	previous: LinkedListener | null = null
 
 	private ctx: LinkedListener | null
 	private _once: boolean
 	private _disposed = false
 
 	constructor(
-		public cb: EventCallback<T> | null,
-		options: LinkedListenerOptions,
+		public cb: EventCallback | null,
+		options?: Partial<LinkedListenerOptions>,
 	) {
+		this.head = this
 		this.ctx = options?.ctx ?? this
-		this.head = options?.ctx ? options.ctx.head : this
 		this._once = options?.once ?? false
 	}
 
@@ -47,13 +47,13 @@ export class LinkedListener<T extends any = any> {
 	 * @param evm - The {@link EventManager} emitting.
 	 * @returns The next listener.
 	 */
-	emit(...args: T[]): LinkedListener | null {
+	emit(...args: any[]): LinkedListener | null {
 		this.assertNotDisposed()
 		if (this.cb) {
 			if (this.ctx) {
 				this.cb.call(this.ctx, ...args)
 			} else {
-				;(this as LinkedListener<any>).cb!(...args)
+				;(this as LinkedListener).cb!(...args)
 			}
 		}
 
@@ -67,13 +67,10 @@ export class LinkedListener<T extends any = any> {
 	/**
 	 * Add a new callback to the list.  All new nodes should be created using this method.
 	 */
-	add(cb: EventCallback<T>, once = false): LinkedListener {
-		const node = new LinkedListener(cb, {
-			ctx: this,
-			once,
-		})
+	add(cb: EventCallback, options?: LinkedListenerOptions): LinkedListener {
+		const node = new LinkedListener(cb, options)
+		node.head = this.head
 		this._connect(node)
-
 		return node
 	}
 
