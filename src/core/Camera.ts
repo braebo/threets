@@ -1,12 +1,12 @@
 import type { Stage } from './Stage'
 import type { Mat4 } from './Matrix4'
+import type { Vec3 } from './Vector3'
 
 import { OrbitController, type OrbitControllerOptions } from '../OrbitController'
 import { WASDController, type WASDControllerOptions } from '../WASDController'
-import { Transform, type TransformOptions } from './Transform'
+import { Transform } from './Transform'
 import { Vector3 } from './Vector3'
 import { Angle } from './Angle'
-// import { Log } from './utils'
 
 export interface CameraOptions {
 	/**
@@ -30,9 +30,13 @@ export interface CameraOptions {
 	 */
 	far?: number
 	/**
-	 * Overrides the default camera transforms.
+	 * Overrides the default camera position.
 	 */
-	transform?: Partial<TransformOptions>
+	position?: Vec3
+	/**
+	 * Overrides the default camera rotation.
+	 */
+	rotation?: Vec3
 	/**
 	 * Optional camera controllers.
 	 */
@@ -78,12 +82,11 @@ export class Camera {
 		orbit?: OrbitController
 	}
 
+	private _dirty = true
+	private _transform: Transform
 	private _viewMatrix!: Mat4
 	private _projectionMatrix!: Mat4
 	private _projectionMatrixInverse!: Mat4
-	private _dirty = true
-
-	readonly transform: Transform
 
 	constructor(
 		public stage: Stage,
@@ -97,36 +100,15 @@ export class Camera {
 			if (options.far) this._far = options?.far
 		}
 
-		// const transformOpts = options?.transform
-		// const position = transformOpts?.position ?? new Vector3(0, 1, -5)
-		// position.onChange(() => (this._dirty = true))
-		// const rotation = transformOpts?.rotation ?? new Vector3(0)
-		// rotation.onChange(() => (this._dirty = true))
-		// const scale = transformOpts?.scale ?? new Vector3(1)
-		// scale.onChange(() => (this._dirty = true))
-
 		const position = new Vector3(0, 1, -5)
-		if (options?.transform?.position) position.set(options.transform.position)
+		if (options?.position) position.set(options.position)
 
 		const rotation = new Vector3(0)
-		if (options?.transform?.rotation) rotation.set(options.transform.rotation)
+		if (options?.rotation) rotation.set(options.rotation)
 
 		const scale = new Vector3(1)
-		if (options?.transform?.scale) scale.set(options.transform.scale)
 
-		// const transformOpts = options?.transform
-		// const position = new Vector3(transformOpts?.position ?? { x: 0, y: 1, z: -5 })
-		// position.onChange(() => (this._dirty = true))
-		// const rotation = new Vector3(transformOpts?.rotation ?? 0)
-		// rotation.onChange(() => (this._dirty = true))
-		// const scale = new Vector3(transformOpts?.scale ?? 1)
-		// scale.onChange(() => (this._dirty = true))
-
-		console.log(position.get())
-		console.log(rotation.get())
-		console.log(scale.get())
-
-		this.transform = new Transform({
+		this._transform = new Transform({
 			position,
 			rotation,
 			scale,
@@ -152,8 +134,6 @@ export class Camera {
 			}
 		}
 
-		// this.updateViewMatrix()
-		// this.updateProjectionMatrix()
 		this.update()
 	}
 
@@ -220,9 +200,17 @@ export class Camera {
 	get projectionMatrix(): Mat4 {
 		return this._projectionMatrix
 	}
-	
+
 	get projectionMatrixInverse(): Mat4 {
 		return this._projectionMatrixInverse
+	}
+
+	get position(): Vector3 {
+		return this._transform.position
+	}
+
+	get rotation(): Vector3 {
+		return this._transform.rotation
 	}
 
 	/**
@@ -230,23 +218,40 @@ export class Camera {
 	 * @returns `false` if no changes were detected.  If the camera is "dirty", updates are run
 	 * and this returns `true`.
 	 */
-	update(): boolean {
+	update(force = false): boolean {
 		if (this.controllers.orbit?.dirty) {
 			this._dirty = true
-			this.transform.position.copy(this.controllers.orbit.position)
-			// this.transform.rotation.copy(this.controllers.orbit.quaternion.toEulerAngles())
-			this.transform.lookAt(this.controllers.orbit.target, this.up)
 			this.controllers.orbit.dirty = false
-		}
-		// todo - update wasd to pull like orbit above
-		this._dirty ||= !!this.controllers.wasd?.update()
 
-		if (!this._dirty) {
-			console.error('Camera.update() called without changes')
+			this._transform.position.copy(this.controllers.orbit.position)
+			// this.transform.rotation.copy(this.controllers.orbit.quaternion.toEulerAngles())
+			this._transform.lookAt(this.controllers.orbit.target, this.up)
+
+			// Keep the WASD controller in sync with the orbit controller.
+			this.controllers.wasd?.position.copy(this._transform.position)
+		}
+
+		if (this.controllers.wasd?.dirty) {
+			this._dirty = true
+			this.controllers.wasd.dirty = false
+
+			// this.controllers.wasd.update()
+			this._transform.position.copy(this.controllers.wasd.position)
+			this._transform.rotation.copy(this.controllers.wasd.rotation)
+
+			// Keep the orbit controller in sync with the WASD controller.
+			this.controllers.orbit?.position.copy(this._transform.position)
+		}
+
+		if (!force && !this._dirty) {
+			console.error(
+				'Camera.update() called without changes. Use `force` to bypass this check.',
+			)
 			console.log('this._dirty:', this._dirty)
 			return false
 		}
-		this.transform.update()
+
+		this._transform.update()
 		this.updateViewMatrix()
 		this.updateProjectionMatrix()
 		this._dirty = false
@@ -254,7 +259,7 @@ export class Camera {
 	}
 
 	updateViewMatrix(): this {
-		this._viewMatrix = Transform.inverse(this.transform.matrix)
+		this._viewMatrix = Transform.inverse(this._transform.matrix)
 		return this
 	}
 
