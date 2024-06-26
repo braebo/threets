@@ -54,12 +54,7 @@ void main() {
 	render()
 
 	const gui = new Gui()
-	gui.addNumber({
-		title: 'speed',
-		binding: {
-			key: 'speed',
-			target: orbit_controller,
-		},
+	gui.addNumber(wasd_controller, 'speed', {
 		min: 0.01,
 		max: 10,
 		step: 0.01,
