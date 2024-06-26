@@ -29,9 +29,9 @@ export interface OrbitControllerOptions {
 	 * The event listener target.
 	 * @default `canvas`
 	 */
-	eventTarget?: ControllerEventTarget
+	domElement?: ControllerEventTarget
 	/**
-	 * Automatically initialize the controller, adding event listeners to the {@link eventTarget}.
+	 * Automatically initialize the controller, adding event listeners to the {@link domElement}.
 	 * @default true
 	 */
 	autoInit?: boolean
@@ -86,7 +86,7 @@ export class OrbitController implements OrbitControllerOptions {
 	preventDefault = true
 	zoomSpeed = 1
 
-	eventTarget?: Window | HTMLElement
+	domElement?: Window | HTMLElement
 	private _eventTarget: ControllerEventTarget = 'canvas'
 	private _speed = 1
 	private _speedMultiplier = 1
@@ -101,7 +101,7 @@ export class OrbitController implements OrbitControllerOptions {
 	}
 
 	dirty = true
-	_zoomDirty = false
+	private _zoomDirty = false
 
 	private _position = new Vector3()
 	get position() {
@@ -120,6 +120,7 @@ export class OrbitController implements OrbitControllerOptions {
 	private _pointerStart = new Vector2()
 	private _pointerEnd = new Vector2()
 	private _tempVec3 = new Vector3()
+	private _tempQuaternion = new Quaternion()
 
 	constructor(
 		public stage: Stage,
@@ -128,7 +129,7 @@ export class OrbitController implements OrbitControllerOptions {
 		if (options?.target) this.target = options.target
 		if (options?.enabled) this.enabled = options.enabled
 		if (options?.autoUpdate) this.autoUpdate = options.autoUpdate
-		if (options?.eventTarget) this._eventTarget = options.eventTarget
+		if (options?.domElement) this._eventTarget = options.domElement
 		if (options?.speed) this._speed = options.speed
 		if (options?.capturePointerLock) this.capturePointerLock = options.capturePointerLock
 		if (options?.zoomSpeed) this.zoomSpeed = options.zoomSpeed
@@ -141,24 +142,24 @@ export class OrbitController implements OrbitControllerOptions {
 	}
 
 	/**
-	 * Initialize the controls, adding event listeners to the {@link eventTarget}.
+	 * Initialize the controls, adding event listeners to the {@link domElement}.
 	 */
 	init() {
 		if (this.initialized) return
 		this.stage.camera.controllers.orbit ??= this
 
 		this.initialized = true
-		this.eventTarget = this._resolveTarget(this._eventTarget)
-		this.eventTarget.addEventListener('pointerdown', this.onPointerDown as EventListener)
-		this.eventTarget.addEventListener('pointermove', this.onPointerMove as EventListener)
-		globalThis.window.addEventListener('pointerup', this.onPointerUp as EventListener)
-		this.eventTarget.addEventListener('blur', this.cancel)
-		this.eventTarget.addEventListener('wheel', this.onWheel as EventListener)
+		this.domElement = this._resolveTarget(this._eventTarget)
+		this.domElement.addEventListener('pointerdown', this._onPointerDown as EventListener)
+		this.domElement.addEventListener('pointermove', this._onPointerMove as EventListener)
+		globalThis.window.addEventListener('pointerup', this._onPointerUp as EventListener)
+		this.domElement.addEventListener('blur', this.cancel)
+		this.domElement.addEventListener('wheel', this._onWheel as EventListener)
 
 		// Set the initial spherical coordinates based on the camera position
-		this._spherical.setFromVectors(this.camera.transform.position, this.target)
+		this._spherical.setFromVectors(this.camera.position, this.target)
 
-		this._position.copy(this.camera.transform.position)
+		this._position.copy(this.camera.position)
 
 		if (this.stage && (this.autoUpdate ?? true)) {
 			this.update()
@@ -177,8 +178,6 @@ export class OrbitController implements OrbitControllerOptions {
 			document.exitPointerLock()
 		}
 	}
-
-	private _tempQuaternion = new Quaternion()
 
 	/**
 	 * Update the camera's position based on the current spherical coordinates.
@@ -201,8 +200,8 @@ export class OrbitController implements OrbitControllerOptions {
 		// Apply pan
 		this.target.add(this._panOffset)
 
-		// Calculate new position
 		// prettier-ignore
+		// Calculate new position
 		this._tempVec3.setXYZ(
 			this._spherical.radius * Math.sin(this._spherical.phi) * Math.sin(this._spherical.theta),
 			this._spherical.radius * Math.cos(this._spherical.phi),
@@ -227,7 +226,6 @@ export class OrbitController implements OrbitControllerOptions {
 		this.dirty = true
 
 		if (this.autoUpdate) {
-			console.log('OrbitController.update() called, dirty = ', this.dirty)
 			this.stage.camera.update()
 		}
 
@@ -240,9 +238,9 @@ export class OrbitController implements OrbitControllerOptions {
 		this._zoomDirty = true
 	}
 
-	onPointerMove = (event: PointerEvent) => {
+	private _onPointerMove = (event: PointerEvent) => {
 		if (!this.enabled) return
-		if (this.preventDefault && event.target === this.eventTarget) event.preventDefault()
+		if (this.preventDefault && event.target === this.domElement) event.preventDefault()
 		if (!this.active) return
 
 		this._pointerEnd.setXY(event.clientX, event.clientY)
@@ -268,7 +266,7 @@ export class OrbitController implements OrbitControllerOptions {
 		this._pointerStart.copy(this._pointerEnd)
 	}
 
-	onWheel = (event: WheelEvent) => {
+	private _onWheel = (event: WheelEvent) => {
 		if (!this.enabled) return
 		if (this.preventDefault) event.preventDefault()
 
@@ -276,41 +274,32 @@ export class OrbitController implements OrbitControllerOptions {
 		this.zoom(delta > 0 ? 0.1 : -0.1)
 	}
 
-	onPointerDown = (event: PointerEvent) => {
+	private _onPointerDown = (event: PointerEvent) => {
 		if (!this.enabled) return
 		if (this.preventDefault) event.preventDefault()
 		if (this.active) return
 
 		this.active = true
+		this._position.copy(this.camera.position)
 
 		this._pointerStart.setXY(event.clientX, event.clientY)
-		this._position.copy(this.camera.transform.position)
-		this._spherical.setFromVectors(this.camera.transform.position, this.target)
+		this._spherical.setFromVectors(this.camera.position, this.target)
 
 		if (this.capturePointerLock) {
-			if (this.eventTarget instanceof HTMLElement) {
-				this.eventTarget.requestPointerLock()
+			if (this.domElement instanceof (HTMLElement || Window)) {
+				this.domElement.requestPointerLock()
 			} else {
 				globalThis.document?.body?.requestPointerLock()
 			}
 		}
 	}
 
-	onPointerUp = (event: PointerEvent) => {
+	private _onPointerUp = (event: PointerEvent) => {
 		if (!this.enabled) return
 		if (this.preventDefault) event.preventDefault()
 		if (!this.active) return
 
 		this.active = false
-	}
-
-	dispose() {
-		this.cancel()
-		this.eventTarget?.removeEventListener('pointerdown', this.onPointerDown as EventListener)
-		this.eventTarget?.removeEventListener('pointermove', this.onPointerMove as EventListener)
-		globalThis.window.removeEventListener('pointerup', this.onPointerUp as EventListener)
-		this.eventTarget?.removeEventListener('blur', this.cancel)
-		this.eventTarget?.removeEventListener('wheel', this.onWheel as EventListener)
 	}
 
 	// caching refs
@@ -336,11 +325,20 @@ export class OrbitController implements OrbitControllerOptions {
 		}
 
 		if (target instanceof HTMLElement) {
-			this.eventTargetWidth = () => (this.eventTarget as HTMLElement)?.clientWidth
-			this.eventTargetHeight = () => (this.eventTarget as HTMLElement)?.clientHeight
+			this.eventTargetWidth = () => (this.domElement as HTMLElement)?.clientWidth
+			this.eventTargetHeight = () => (this.domElement as HTMLElement)?.clientHeight
 			return target
 		}
 
 		throw error
+	}
+
+	dispose() {
+		this.cancel()
+		this.domElement?.removeEventListener('pointerdown', this._onPointerDown as EventListener)
+		this.domElement?.removeEventListener('pointermove', this._onPointerMove as EventListener)
+		globalThis.window.removeEventListener('pointerup', this._onPointerUp as EventListener)
+		this.domElement?.removeEventListener('blur', this.cancel)
+		this.domElement?.removeEventListener('wheel', this._onWheel as EventListener)
 	}
 }
