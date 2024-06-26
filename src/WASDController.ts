@@ -1,3 +1,4 @@
+import { DEV } from 'esm-env'
 import type { Camera } from './core/Camera'
 import type { Stage } from './core/Stage'
 import { select } from './core/utils'
@@ -25,6 +26,15 @@ export const WASD_COMMANDS = Object.keys(DEFAULT_STATE) as Array<keyof typeof DE
 
 export interface WASDControllerOptions {
 	/**
+	 * Enables only specific commands in the controller while excluding all others.
+	 */
+	include?: WASDCommand[]
+	/**
+	 * Exclude specific commands from the controller. These will also be filtered out of the
+	 * {@link include} array provided.
+	 */
+	exclude?: WASDCommand[]
+	/**
 	 * The base speed of the controller.
 	 * @default 1
 	 */
@@ -42,7 +52,7 @@ export interface WASDControllerOptions {
 	autoUpdate?: boolean
 	/**
 	 * Whether the arrow keys should control rotation.
-	 * @default true
+	 * @default false
 	 */
 	useRotation?: boolean
 	/**
@@ -90,7 +100,7 @@ export class WASDController {
 
 	enabled = true
 	autoUpdate = true
-	useRotation = true
+	useRotation = false
 	state: Record<WASDCommand, boolean> = structuredClone(DEFAULT_STATE)
 	/**
 	 * Whether any control is currently active.
@@ -154,6 +164,8 @@ export class WASDController {
 	position = new Vector3()
 	rotation = new Vector3()
 
+	legalMoves: Set<WASDCommand>
+
 	constructor(
 		public stage: Stage,
 		options?: WASDControllerOptions,
@@ -167,6 +179,11 @@ export class WASDController {
 		if (options?.preventDefault) this.preventDefault = options.preventDefault
 		if (options?.capturePointerLock) this.capturePointerLock = options.capturePointerLock
 		if (options?.domElement) this.domElement = options.domElement as Window | HTMLElement
+
+		this.legalMoves = new Set(options?.include ?? WASD_COMMANDS)
+		if (options?.exclude) {
+			this.legalMoves = this.legalMoves.difference(new Set(options.exclude))
+		}
 
 		if (options?.autoInit ?? true) this.init()
 	}
@@ -190,7 +207,6 @@ export class WASDController {
 
 		this.domElement.addEventListener('keydown', this.onKeyDown as EventListener)
 		this.domElement.addEventListener('keyup', this.onKeyUp as EventListener)
-		// this.domElement.addEventListener('blur', this.cancel)
 
 		this.position.copy(this.stage.camera.position)
 		this.rotation.copy(this.stage.camera.rotation)
@@ -254,9 +270,9 @@ export class WASDController {
 		this.moves = this.moves.filter(move => move !== key)
 
 		if (key === 'shift') {
-			this._speedMultiplier = this.state.control ? 0.5 : 1
+			this._speedMultiplier = this.state['control'] ? 0.5 : 1
 		} else if (key === 'control') {
-			this._speedMultiplier = this.state.shift ? 2 : 1
+			this._speedMultiplier = this.state['shift'] ? 2 : 1
 		}
 
 		this.updateActive()
@@ -293,10 +309,10 @@ export class WASDController {
 
 		const key = event.key.toLowerCase() as WASDCommand
 
-		if (WASD_COMMANDS.includes(key)) {
+		if (this.legalMoves.has(key)) {
 			if (this.preventDefault) event.preventDefault()
 			this._activate(key)
-		} else {
+		} else if (DEV) {
 			console.warn('key down:', key, 'not matched')
 		}
 	}
@@ -305,10 +321,10 @@ export class WASDController {
 		if (!this.enabled) return
 		const key = event.key.toLowerCase() as WASDCommand
 
-		if (WASD_COMMANDS.includes(key)) {
+		if (this.legalMoves.has(key)) {
 			if (this.preventDefault) event.preventDefault()
 			this._deactivate(key)
-		} else {
+		} else if (DEV) {
 			console.warn('key up:', key, 'not matched')
 		}
 	}
@@ -317,6 +333,5 @@ export class WASDController {
 		this.cancel()
 		this.domElement.removeEventListener('keydown', this.onKeyDown as EventListener)
 		this.domElement.removeEventListener('keyup', this.onKeyUp as EventListener)
-		// this.domElement.removeEventListener('blur', this.cancel as EventListener)
 	}
 }
