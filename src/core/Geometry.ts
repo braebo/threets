@@ -4,12 +4,19 @@ import type { Stage } from './Stage'
 
 import { Transform } from './Transform'
 
+/**
+ * Options for the {@link Geometry} constructor.  Only {@link GeometryOptions.name|`name`} and
+ * {@link GeometryOptions.positions|`positions`} are required.
+ */
 export interface GeometryOptions {
 	name: string
 	/**
 	 * The vertex positions data.
 	 */
 	positions: Float32Array
+	/**
+	 * The vertex indices data. (optional)
+	 */
 	indices?: Uint16Array
 	/**
 	 * The rendering method to use when drawing the geometry.
@@ -25,9 +32,24 @@ export interface GeometryOptions {
 	 * @default gl.FLOAT
 	 */
 	type?: GLPrimitive
+	/**
+	 * Whether integer data values should be normalized when being cast to a float.
+	 * @default false
+	 */
 	normalize?: boolean
+	/**
+	 * The byte offset between consecutive generic vertex attributes.
+	 * @default 0
+	 */
 	stride?: number
+	/**
+	 * The offset in bytes of the first component in the vertex attribute array.
+	 * @default 0
+	 */
 	offset?: number
+	/**
+	 * A options for the geometry's {@link Transform} instance.
+	 */
 	transform?: TransformOptions
 	/**
 	 * If true, {@link WebGLVertexArrayObject|Vertex Array Objects} will be leveraged for performance.
