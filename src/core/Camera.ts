@@ -1,6 +1,8 @@
-import type { Stage } from './Stage'
+import type { Gui, Folder, FolderOptions } from './gooey'
+import type { CameraGui } from './CameraGui'
 import type { Mat4 } from './Matrix4'
 import type { Vec3 } from './Vector3'
+import type { Stage } from './Stage'
 
 import { OrbitController, type OrbitControllerOptions } from '../OrbitController'
 import { WASDController, type WASDControllerOptions } from '../WASDController'
@@ -272,5 +274,12 @@ export class Camera {
 		)
 		this._projectionMatrixInverse = Transform.inverse(this._projectionMatrix)
 		return this
+	}
+
+	gui?: CameraGui
+	async addGui(folder: Gui | Folder, options?: Partial<FolderOptions> & { title: string }) {
+		const { CameraGui } = await import('./CameraGui')
+		this.gui = new CameraGui(this, folder.addFolder(options?.title ?? 'camera', options))
+		return this.gui
 	}
 }
