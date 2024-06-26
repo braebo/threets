@@ -1,15 +1,34 @@
+import type { Camera } from './core/Camera'
 import type { Stage } from './core/Stage'
-import { Log } from './core/utils'
+import { select } from './core/utils'
+import { Vector3 } from './core/Vector3'
+// import { Log } from './core/utils'
+
+const DEFAULT_STATE = Object.freeze({
+	w: false,
+	a: false,
+	s: false,
+	d: false,
+	q: false,
+	e: false,
+	shift: false,
+	control: false,
+	escape: false,
+	arrowup: false,
+	arrowdown: false,
+	arrowleft: false,
+	arrowright: false,
+} as const)
 
 export type WASDCommand = (typeof WASD_COMMANDS)[number]
-export const WASD_COMMANDS = ['w', 'a', 's', 'd', 'q', 'e', 'shift', 'control', 'escape'] as const
+export const WASD_COMMANDS = Object.keys(DEFAULT_STATE) as Array<keyof typeof DEFAULT_STATE>
 
 export interface WASDControllerOptions {
 	/**
-	 * The event listener target.
-	 * @default 'window'
+	 * The base speed of the controller.
+	 * @default 1
 	 */
-	eventTarget?: 'window' | 'canvas'
+	speed?: number
 	/**
 	 * Automatically initialize the controls, adding event listeners to the {@link eventTarget}.
 	 * @default true
@@ -17,9 +36,20 @@ export interface WASDControllerOptions {
 	autoInit?: boolean
 	/**
 	 * Automatically call {@link update} when a control is activated or deactivated.
+	 * @todo - this may not be necessary anymore
 	 * @default true
 	 */
 	autoUpdate?: boolean
+	/**
+	 * Whether the arrow keys should control rotation.
+	 * @default true
+	 */
+	useRotation?: boolean
+	/**
+	 * Whether to call {@link Event.preventDefault} on keydown events.
+	 * @default true
+	 */
+	preventDefault?: boolean
 	/**
 	 * Hide the mouse cursor when a control is activated.
 	 * @default false
@@ -31,10 +61,10 @@ export interface WASDControllerOptions {
 	 */
 	enabled?: boolean
 	/**
-	 * The base speed of the controller.
-	 * @default 1
+	 * The event listener target or query selector.  The string `'window'` will resolve to
+	 * {@link globalThis.window} when {@link WASDController.init|init} is called.
 	 */
-	speed?: number
+	domElement?: Window | HTMLElement | string | 'window'
 }
 
 /**
@@ -54,60 +84,43 @@ export interface WASDControllerOptions {
  * controls.speed = 0.1
  * ```
  */
-@Log('OrbitControls', { exclude: [''] })
+// @Log('OrbitControls', { exclude: [''] })
 export class WASDController {
 	initialized = false
+
+	enabled = true
 	autoUpdate = true
-
-	_target!: Window | HTMLCanvasElement
-	capturePointerLock: boolean
-	enabled: boolean
-	_speedMultiplier = 1
-	private _speed: number
-	get speed() {
-		return this._speed * this._speedMultiplier
-	}
-
+	useRotation = true
+	state: Record<WASDCommand, boolean> = structuredClone(DEFAULT_STATE)
 	/**
 	 * Whether any control is currently active.
 	 */
 	active = false
-	_dirty = true
+	dirty = true
+	capturePointerLock = false
+	preventDefault = true
 
-	state: Record<WASDCommand, boolean> = {
-		w: false,
-		a: false,
-		s: false,
-		d: false,
-		q: false,
-		e: false,
-		shift: false,
-		control: false,
-		escape: false,
-	}
-
-	get transform() {
-		return this.stage.camera.transform
-	}
+	private _speed = 1
+	_speedMultiplier = 1
 
 	private moveset = {
 		w: () => {
-			this.transform.position.z = this.transform.position.z + this.speed
+			this.position.z = this.position.z - this.speed
 		},
 		a: () => {
-			this.transform.position.x = this.transform.position.x - this.speed
+			this.position.x = this.position.x - this.speed
 		},
 		s: () => {
-			this.transform.position.z = this.transform.position.z - this.speed
+			this.position.z = this.position.z + this.speed
 		},
 		d: () => {
-			this.transform.position.x = this.transform.position.x + this.speed
+			this.position.x = this.position.x + this.speed
 		},
 		q: () => {
-			this.transform.position.y = this.transform.position.y - this.speed
+			this.position.y = this.position.y - this.speed
 		},
 		e: () => {
-			this.transform.position.y = this.transform.position.y + this.speed
+			this.position.y = this.position.y + this.speed
 		},
 		shift: () => {
 			this._speedMultiplier = 2
@@ -118,6 +131,18 @@ export class WASDController {
 		escape: () => {
 			this.cancel()
 		},
+		arrowup: () => {
+			this.rotation.x = this.rotation.x - 0.1
+		},
+		arrowdown: () => {
+			this.rotation.x = this.rotation.x + 0.1
+		},
+		arrowleft: () => {
+			this.rotation.y = this.rotation.y - 0.1
+		},
+		arrowright: () => {
+			this.rotation.y = this.rotation.y + 0.1
+		},
 	} as const satisfies Record<WASDCommand, () => void>
 
 	/**
@@ -125,26 +150,29 @@ export class WASDController {
 	 */
 	private moves: WASDCommand[] = []
 
+	domElement = 'window' as any as Window | HTMLElement
+	position = new Vector3()
+	rotation = new Vector3()
+
 	constructor(
 		public stage: Stage,
 		options?: WASDControllerOptions,
 	) {
 		stage.camera.controllers.wasd = this
-		this.target = options?.eventTarget ?? 'window'
-		this.capturePointerLock = options?.capturePointerLock ?? false
-		this.enabled = options?.enabled ?? true
-		this._speed = options?.speed ?? 1
 
-		if (options?.autoInit ?? true) {
-			this.init()
-		}
+		if (options?.speed) this._speed = options.speed
+		if (options?.autoUpdate) this.autoUpdate = options.autoUpdate
+		if (options?.enabled) this.enabled = options.enabled
+		if (options?.useRotation) this.useRotation = options?.useRotation
+		if (options?.preventDefault) this.preventDefault = options.preventDefault
+		if (options?.capturePointerLock) this.capturePointerLock = options.capturePointerLock
+		if (options?.domElement) this.domElement = options.domElement as Window | HTMLElement
+
+		if (options?.autoInit ?? true) this.init()
 	}
 
-	get target(): Window | HTMLCanvasElement {
-		return this._target
-	}
-	set target(value: WASDControllerOptions['eventTarget']) {
-		this._target = value === 'canvas' ? this.stage.canvas : globalThis.window
+	get speed() {
+		return this._speed * this._speedMultiplier
 	}
 
 	/**
@@ -153,15 +181,21 @@ export class WASDController {
 	init() {
 		if (this.initialized) return
 		this.initialized = true
-		this.target.addEventListener('keydown', this.onKeyDown as EventListener)
-		this.target.addEventListener('keyup', this.onKeyUp as EventListener)
-		this.target.addEventListener('blur', this.cancel)
 
-		this.transform.position.set(this.stage.camera.transform.position)
-
-		if (this.autoUpdate ?? true) {
-			this.update()
+		// Resolve the event target.
+		if (typeof this.domElement === 'string') {
+			this.domElement =
+				this.domElement === 'window' ? globalThis.window : select(this.domElement)
 		}
+
+		this.domElement.addEventListener('keydown', this.onKeyDown as EventListener)
+		this.domElement.addEventListener('keyup', this.onKeyUp as EventListener)
+		// this.domElement.addEventListener('blur', this.cancel)
+
+		this.position.copy(this.stage.camera.position)
+		this.rotation.copy(this.stage.camera.rotation)
+
+		if (this.autoUpdate) this.update()
 	}
 
 	/**
@@ -170,17 +204,7 @@ export class WASDController {
 	cancel = () => {
 		this.active = false
 		this.moves = []
-		this.state = {
-			w: false,
-			a: false,
-			s: false,
-			d: false,
-			q: false,
-			e: false,
-			shift: false,
-			control: false,
-			escape: false,
-		}
+		this.state = structuredClone(DEFAULT_STATE)
 		this._speedMultiplier = 1
 		if (this.capturePointerLock) {
 			document.exitPointerLock()
@@ -193,16 +217,24 @@ export class WASDController {
 	 */
 	update(): boolean {
 		if (!this.enabled) return false
-		if (!this.active && !this._dirty) return false
+		if (!this.active && !this.dirty) return false
 
 		for (let i = 0; i < this.moves.length; i++) {
 			this.moveset[this.moves[i]]()
 		}
-		this._dirty = true
+		this.dirty = true
 		if (this.autoUpdate) {
 			this.stage.camera.update()
 		}
 		return true
+	}
+
+	apply(camera: Camera) {
+		camera.position.set(this.position)
+		if (this.useRotation) {
+			camera.rotation.set(this.rotation)
+		}
+		camera.rotation.set(this.rotation)
 	}
 
 	private _activate(key: WASDCommand) {
@@ -258,9 +290,11 @@ export class WASDController {
 
 	onKeyDown = (event: KeyboardEvent) => {
 		if (!this.enabled) return
+
 		const key = event.key.toLowerCase() as WASDCommand
 
 		if (WASD_COMMANDS.includes(key)) {
+			if (this.preventDefault) event.preventDefault()
 			this._activate(key)
 		} else {
 			console.warn('key down:', key, 'not matched')
@@ -272,6 +306,7 @@ export class WASDController {
 		const key = event.key.toLowerCase() as WASDCommand
 
 		if (WASD_COMMANDS.includes(key)) {
+			if (this.preventDefault) event.preventDefault()
 			this._deactivate(key)
 		} else {
 			console.warn('key up:', key, 'not matched')
@@ -280,6 +315,8 @@ export class WASDController {
 
 	dispose() {
 		this.cancel()
-		this.target.removeEventListener('blur', this.cancel as EventListener)
+		this.domElement.removeEventListener('keydown', this.onKeyDown as EventListener)
+		this.domElement.removeEventListener('keyup', this.onKeyUp as EventListener)
+		// this.domElement.removeEventListener('blur', this.cancel as EventListener)
 	}
 }
