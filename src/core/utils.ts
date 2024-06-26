@@ -39,10 +39,14 @@ export function cross_arr(a: number[], b: number[]) {
 	return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
 }
 
-export function select(elementOrSelector?: QuerySelector | Element) {
-	return typeof elementOrSelector === 'string'
-		? document.querySelector(elementOrSelector)
-		: elementOrSelector
+export function select(elementOrSelector?: QuerySelector | HTMLElement): HTMLElement {
+	const element =
+		typeof elementOrSelector === 'string'
+			? (document.querySelector(elementOrSelector) as HTMLElement)
+			: elementOrSelector
+
+	if (!element) throw new Error(`Element not found: ${elementOrSelector}`)
+	return element
 }
 
 export function isNumber(thing: any): thing is number {
