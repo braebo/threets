@@ -1,8 +1,8 @@
+import type { TransformOptions } from './Transform'
 import type { GLMode, GLPrimitive } from './types'
 import type { Stage } from './Stage'
 
-// import { Log } from './utils'
-import { Transform, type TransformOptions } from './Transform'
+import { Transform } from './Transform'
 
 export interface GeometryOptions {
 	name: string
@@ -17,6 +17,9 @@ export interface GeometryOptions {
 	 */
 	mode?: GLMode
 	// attrs
+	/**
+	 * The number of components per vertex attribute.
+	 */
 	size?: number
 	/**
 	 * @default gl.FLOAT
@@ -39,7 +42,6 @@ export function isGeometry(object: any): object is Geometry {
 	return typeof object === 'object' && object.__type === 'Geometry'
 }
 
-// @Log('Geometry', ['render', 'vertexCount', 'gl', 'updateModelMatrix'])
 export class Geometry {
 	__type = 'Geometry'
 	name: string
@@ -57,6 +59,9 @@ export class Geometry {
 	_positions: Float32Array
 	indices?: Uint16Array
 	mode: GLMode
+	/**
+	 * The number of components per vertex attribute.
+	 */
 	size: number
 	type: GLPrimitive
 
@@ -71,6 +76,9 @@ export class Geometry {
 		return this.stage.program!
 	}
 
+	get positions() {
+		return this._positions
+	}
 	set positions(positions: Float32Array) {
 		if (this.isStatic) {
 			throw new Error(
@@ -139,6 +147,12 @@ export class Geometry {
 		if (indices) {
 			this.indices = indices
 		}
+	}
+
+	refreshPositions() {
+		this.positions = this._positions
+		this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer)
+		this.gl.bufferData(this.gl.ARRAY_BUFFER, this._positions, this.gl.STATIC_DRAW)
 	}
 
 	setup() {
