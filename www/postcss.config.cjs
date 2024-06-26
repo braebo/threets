@@ -8,7 +8,7 @@ module.exports = {
 		autoprefixer,
 		!dev &&
 			cssnano({
-				preset: 'default'
-			})
-	]
+				preset: 'default',
+			}),
+	],
 }
