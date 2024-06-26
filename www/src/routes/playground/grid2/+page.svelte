@@ -1,31 +1,19 @@
 <script lang="ts">
-	import type { WASDController, OrbitController } from 'threets'
+	import type { BundledTheme, Highlighter } from 'shiki/bundle/web'
+	import type { WASDController } from 'threets'
 	import type { Stage } from 'threets'
 
+	import { codeToHtml, getSingletonHighlighter } from 'shiki/bundle/web'
+	import { prettyPrintKeys } from '$lib/utils/prettyPrint'
 	import { gridScene } from '$lib/scenes/grid2-scene'
 	import { onDestroy, onMount } from 'svelte'
 
-	import {
-		type BundledTheme,
-		type Highlighter,
-		codeToHtml,
-		getSingletonHighlighter,
-	} from 'shiki/bundle/web'
-
-	// `getHighlighter` is async, it initializes the internal and
-	// loads the themes and languages specified.
-
 	let stage: Stage
 	let wasd_controller: WASDController
-	let orbit_controller: OrbitController
 
 	let highlighter: Highlighter
 	const lang = 'json'
 	const theme: BundledTheme = 'poimandres'
-
-	// let wasd_debug = ''
-	// let orbit_debug = ''
-	// let cameraMatrix = ''
 
 	let _grid = {} as any
 
@@ -36,28 +24,8 @@
 		})
 
 		const { stage, grid } = await gridScene('#scene')
-		// _grid = grid
-		orbit_controller = stage.camera.controllers.orbit!
+
 		wasd_controller = stage.camera.controllers.wasd!
-
-		function getKeys<T extends Record<string, any>, K extends keyof T>(
-			obj: T,
-			keys: Array<K | (string & {})>,
-			title = '',
-		) {
-			const str = prettyPrint(
-				keys.reduce(
-					(acc, key) => {
-						// @ts-expect-error
-						acc[key] = obj[key]
-						return acc
-					},
-					{} as Pick<T, K>,
-				),
-			)
-
-			return title ? `\n${title} ` + str : str
-		}
 
 		let i = 0
 		stage.onUpdate(async () => {
@@ -66,22 +34,7 @@
 				return
 			}
 
-			// codeToHtml(
-			// 	getKeys(orbit_controller, ['active', 'position', 'target'], 'Orbit Controller'),
-			// 	{ lang, theme },
-			// ).then((html) => (orbit_debug = html))
-
-			// codeToHtml(
-			// 	getKeys(wasd_controller, ['active', 'moves', 'position', 'rotation'], 'WASD Controller'),
-			// 	{ lang, theme },
-			// ).then((html) => (wasd_debug = html))
-
-			// codeToHtml(
-			// 	getKeys(stage.camera, ['position', 'rotation', 'fov', 'near', 'far'], 'Camera'),
-			// 	{ lang, theme },
-			// ).then((html) => (cameraMatrix = html))
-
-			codeToHtml(getKeys(grid.geometry, ['buffer'], 'Grid'), { lang, theme }).then(
+			codeToHtml(prettyPrintKeys(grid.geometry, ['buffer'], 'Grid'), { lang, theme }).then(
 				(html) => (_grid = html),
 			)
 		})
@@ -90,10 +43,6 @@
 	onDestroy(() => {
 		globalThis.window?.location.reload()
 	})
-
-	function prettyPrint(data: any) {
-		return JSON.stringify(data, null, 2).replaceAll(/"/g, '')
-	}
 </script>
 
 <section class="page">
@@ -116,23 +65,6 @@
 				{@html _grid}
 			{/key}
 		</div>
-
-		<!-- <div class="debug-data">
-		{#key wasd_controller}
-			<div class="count" use:increment>{i}</div>
-			{@html wasd_debug}
-		{/key}
-	</div> -->
-		<!-- <div class="debug-data">
-		{#key orbit_controller}
-			{@html orbit_debug}
-		{/key}
-	</div> -->
-		<!-- <div class="debug-data">
-		{#key cameraMatrix}
-			{@html cameraMatrix}
-		{/key}
-	</div> -->
 	</div>
 
 	<div class="buttons">
@@ -151,6 +83,10 @@
 	}
 
 	.buttons {
+		position: absolute;
+		bottom: 0;
+		left: 1rem;
+
 		display: flex;
 		flex-direction: row;
 		justify-content: center;
@@ -163,20 +99,27 @@
 	}
 
 	button {
+		padding: 0.5rem 1rem;
+		margin: 0.5rem auto;
+
 		background: var(--dark-a);
 		color: var(--light-d);
 		border: 1px solid var(--bg-d);
 		border-radius: 0.5rem;
-		padding: 0.5rem 1rem;
-		margin: 0.5rem auto;
+
+		font-family: var(--font-mono);
 	}
 
 	.debug-data-container {
 		display: flex;
-		flex-direction: column;
+		justify-content: column;
+		align-items: flex-end;
+
 		position: absolute;
 		top: 1rem;
-		left: 4.5rem;
+		left: 2rem;
+
+		height: calc(100% - 6rem);
 	}
 	.debug-data {
 		:global(*) {
@@ -206,5 +149,16 @@
 		border-radius: 1rem;
 		margin: 1rem auto;
 		outline: 1px solid var(--bg-d);
+		animation: fade-in 1s 0.5s forwards;
+		opacity: 0;
+	}
+
+	@keyframes fade-in {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
 	}
 </style>
