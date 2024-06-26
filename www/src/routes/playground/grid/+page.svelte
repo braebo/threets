@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { Stage } from 'threets'
 	import type { WASDController, OrbitController } from 'threets'
+	import type { Stage } from 'threets'
 
 	import { gridScene } from '$lib/scenes/grid-scene'
 	import { onDestroy, onMount } from 'svelte'
@@ -39,6 +39,25 @@
 		orbit_controller = stage.camera.controllers.orbit!
 		wasd_controller = stage.camera.controllers.wasd!
 
+		function getKeys<T extends Record<string, any>, K extends keyof T>(
+			obj: T,
+			keys: Array<K | (string & {})>,
+			title = '',
+		) {
+			const str = prettyPrint(
+				keys.reduce(
+					(acc, key) => {
+						// @ts-expect-error
+						acc[key] = obj[key]
+						return acc
+					},
+					{} as Pick<T, K>,
+				),
+			)
+
+			return title ? `\n${title} ` + str : str
+		}
+
 		let i = 0
 		stage.onUpdate(async () => {
 			i++
@@ -47,39 +66,18 @@
 			}
 
 			codeToHtml(
-				`\nOrbit Controller ` +
-					prettyPrint({
-						...orbit_controller,
-						eventTarget: undefined,
-						stage: undefined,
-					}),
+				getKeys(orbit_controller, ['active', 'position', 'target'], 'Orbit Controller'),
 				{ lang, theme },
 			).then((html) => (orbit_debug = html))
 
 			codeToHtml(
-				`\nWASD Controller ` +
-					prettyPrint({
-						...wasd_controller,
-						eventTarget: undefined,
-						stage: undefined,
-						// state: wasd_controller.state,
-						active: wasd_controller.active,
-						//// @ts-expect-error
-						// moves: wasd_controller.moves,
-						speed: wasd_controller.speed,
-						target: wasd_controller.target,
-						position: wasd_controller.transform.position,
-					}),
+				getKeys(wasd_controller, ['active', 'moves', 'position', 'rotation'], 'WASD Controller'),
 				{ lang, theme },
 			).then((html) => (wasd_debug = html))
 
 			codeToHtml(
-				`\nCamera ` +
-					prettyPrint({ ...stage.camera, stage: undefined, controllers: undefined }),
-				{
-					lang,
-					theme,
-				},
+				getKeys(stage.camera, ['position', 'rotation', 'fov', 'near', 'far'], 'Camera'),
+				{ lang, theme },
 			).then((html) => (cameraMatrix = html))
 		})
 
@@ -92,7 +90,9 @@
 		globalThis.window?.location.reload()
 	})
 
-	const prettyPrint = (data: any) => JSON.stringify(data, null, 2).replaceAll(/"/g, '')
+	function prettyPrint(data: any) {
+		return JSON.stringify(data, null, 2).replaceAll(/"/g, '')
+	}
 
 	let i = 0
 	function increment(_node: Element) {
@@ -104,8 +104,8 @@
 	<button
 		on:click={() => {
 			console.log('foo')
-			stage.camera.transform.position.x = 10
-			stage.camera.transform.update()
+			stage.camera.position.x = 10
+			stage.camera.update()
 			stage.render()
 		}}>x = 10</button
 	>
@@ -162,8 +162,9 @@
 	}
 
 	.debug-data-container {
-		position: absolute;
 		display: flex;
+		flex-direction: column;
+		position: absolute;
 		top: 1rem;
 		left: 4.5rem;
 	}

@@ -1,15 +1,17 @@
+import type { UniformOptions, UniformValueType } from './Uniform'
+import type { GeometryOptions } from './Geometry'
+import type { CameraOptions } from './Camera'
 import type { QuerySelector } from './types'
+import type { Vec3 } from './Vector3'
 
-import { Geometry, type GeometryOptions } from './Geometry'
-import { Vector3, isVector3, type Vec3 } from './Vector3'
-import { Uniform, type UniformOptions } from './Uniform'
-import { Camera, type CameraOptions } from './Camera'
+import { Vector3, isVector3 } from './Vector3'
 import { LinkedListener } from './Listener'
 import { Transform } from './Transform'
-import {
-	select,
-	// Log
-} from './utils'
+import { Geometry } from './Geometry'
+import { Uniform } from './Uniform'
+import { Vector2 } from './Vector2'
+import { Camera } from './Camera'
+import { select } from './utils'
 
 export interface StageOptions {
 	canvas?: HTMLCanvasElement | QuerySelector
@@ -28,7 +30,8 @@ export class Stage {
 	opts: StageOptions
 
 	canvas!: HTMLCanvasElement
-	container!: Element
+	dimensions = new Vector2()
+	container!: HTMLElement
 	resizeObserver!: ResizeObserver
 
 	gl: WebGL2RenderingContext | null = null
@@ -116,16 +119,14 @@ void main() {
 
 		//* Setup Container
 
-		let container = select(this.opts.container)
-		if (!container) container = document.body
-		this.container = container
+		this.container = this.opts.container ? select(this.opts.container) : document.body
 
 		//* Setup Canvas
 
 		let canvas = select(this.opts.canvas)
 		if (!canvas) {
 			canvas = document.createElement('canvas')
-			container.appendChild(canvas)
+			this.container.appendChild(canvas)
 		}
 		this.canvas = canvas as HTMLCanvasElement
 
@@ -157,11 +158,8 @@ void main() {
 			aspect: this.opts.camera?.aspect ?? this.canvas.width / this.canvas.height,
 			near: this.opts.camera?.near ?? 1,
 			far: this.opts.camera?.far ?? 2000,
-			transform:
-				this.opts.camera?.transform ??
-				{
-					// position: new Vector3({ x: 0, y: 10, z: -10 }),
-				},
+			position: this.opts.camera?.position,
+			rotation: this.opts.camera?.rotation,
 		})
 
 		//* Setup Uniforms
@@ -181,29 +179,16 @@ void main() {
 				this.addGeometry(geometry)
 			}
 		}
-
-		this.addUniform({
-			name: 'u_camera',
-			type: 'array',
-			value: () => this.camera.transform.matrix,
-			update: (location, value) => {
-				this.gl!.uniformMatrix4fv(location, false, value)
-			},
-		})
 	}
 
-	addUniform(uniformOrOptions: Uniform | UniformOptions): Uniform {
+	addUniform<T extends UniformValueType>(options: UniformOptions<T>): Uniform<T> {
 		if (!this.gl) throw new Error('WebGL2 context not found')
 		if (!this.program) throw new Error('Program not found')
 
-		if (uniformOrOptions instanceof Uniform) {
-			this.uniforms.set(uniformOrOptions.name, uniformOrOptions)
-		} else {
-			uniformOrOptions = new Uniform(this.gl, this.program, uniformOrOptions)
-			this.uniforms.set(uniformOrOptions.name, uniformOrOptions)
-		}
+		const uniform = new Uniform(this, options)
+		this.uniforms.set(options.name, uniform)
 
-		return uniformOrOptions
+		return uniform as Uniform<T>
 	}
 
 	addGeometry(options: GeometryOptions): Geometry {
@@ -280,46 +265,31 @@ void main() {
 		this.addUniform({
 			name: 'u_resolution',
 			type: 'vec2',
-			value: () => [this.canvas.width, this.canvas.height] as [number, number],
-			update: (location, value) => {
-				this.gl!.uniform2fv(location, value)
-			},
+			value: () => ({ x: this.canvas.width, y: this.canvas.height }),
 		})
 
 		this.addUniform({
 			name: 'u_time',
 			type: 'float',
 			value: () => performance.now() / 1000,
-			update: (location, value) => {
-				this.gl!.uniform1f(location, value)
-			},
 		})
 
 		this.uModelMatrix = this.addUniform({
 			name: 'u_modelMatrix',
 			type: 'mat4',
-			value: () => this.worldOrigin, // Default to identity matrix
-			update: (location, value) => {
-				this.gl!.uniformMatrix4fv(location, false, value)
-			},
-		} as UniformOptions)
+			value: () => this.worldOrigin, // defaults to identity matrix
+		})
 
 		this.addUniform({
 			name: 'u_viewMatrix',
 			type: 'mat4',
 			value: () => this.camera.viewMatrix,
-			update: (location, value) => {
-				this.gl!.uniformMatrix4fv(location, false, value)
-			},
 		})
 
 		this.addUniform({
 			name: 'u_projectionMatrix',
 			type: 'mat4',
 			value: () => this.camera.projectionMatrix,
-			update: (location, value) => {
-				this.gl!.uniformMatrix4fv(location, false, value)
-			},
 		})
 	}
 

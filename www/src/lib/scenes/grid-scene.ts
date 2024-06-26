@@ -6,10 +6,10 @@ export async function gridScene(selector: string) {
 	const stage = new Stage({
 		canvas: selector,
 		camera: {
-			transform: {
-				// position: { x: 0, y: 5, z: -10 },
-				// position: new Vector3({ x: 0, y: 5, z: -10 }),
-			},
+			// transform: {
+			position: { x: 0, y: 10, z: 10 },
+			// 	// position: new Vector3({ x: 0, y: 5, z: -10 }),
+			// },
 		},
 		fragment: `#version 300 es
 precision mediump float;
@@ -23,32 +23,22 @@ void main() {
 }`,
 	})
 
-	setTimeout(() => {
-		stage.camera.transform.position.set({ x: 0, y: 15, z: -10 })
-	}, 100)
-
 	const orbit_controller = new OrbitController(stage, {
 		speed: 2,
 		target: new Vector3(1, 5, 5),
 	})
-	const wasd_controller = new WASDController(stage, { speed: 0.1 })
+
+	const wasd_controller = new WASDController(stage, { speed: 1 })
 
 	// stage.addSimpleQuad()
 
 	createGridGeometry()
 
-	let error = stage.gl?.getError()
-	if (error != stage.gl?.NO_ERROR) {
-		console.error('WebGL Error: ' + error)
-	}
-
 	const fps = 25
 	const interval = 1000 / fps
-
 	let now: number
 	let then = Date.now()
 	let delta = 0
-
 	function render() {
 		requestAnimationFrame(render)
 		now = Date.now()
@@ -61,7 +51,6 @@ void main() {
 			wasd_controller.update()
 		}
 	}
-
 	render()
 
 	const gui = new Gui()

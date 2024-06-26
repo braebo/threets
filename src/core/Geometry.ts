@@ -128,7 +128,7 @@ export class Geometry {
 	}
 
 	updateModelMatrix() {
-		this.stage.uModelMatrix.update(this.transform.matrix)
+		this.stage.uModelMatrix.update()
 	}
 
 	setGeometry(positions: Float32Array, indices?: Uint16Array) {
