@@ -277,7 +277,7 @@ export class Camera {
 	}
 
 	gui?: CameraGui
-	async addGui(folder: Gui | Folder, options?: Partial<FolderOptions> & { title: string }) {
+	async addGui(folder: Gui | Folder, options?: Partial<FolderOptions>) {
 		const { CameraGui } = await import('./CameraGui')
 		this.gui = new CameraGui(this, folder.addFolder(options?.title ?? 'camera', options))
 		return this.gui

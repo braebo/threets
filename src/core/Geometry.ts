@@ -1,5 +1,7 @@
+import type { Gui, Folder, FolderOptions } from './gooey'
 import type { TransformOptions } from './Transform'
 import type { GLMode, GLPrimitive } from './types'
+import type { GeometryGui } from './GeometryGui'
 import type { Stage } from './Stage'
 
 import { Transform } from './Transform'
@@ -241,5 +243,12 @@ export class Geometry {
 		}
 
 		this.gl.bindVertexArray(null)
+	}
+
+	gui?: GeometryGui
+	async addGui(folder: Gui | Folder, options?: Partial<FolderOptions>) {
+		const { GeometryGui } = await import('./GeometryGui')
+		this.gui = new GeometryGui(this, folder.addFolder(options?.title ?? this.name, options))
+		return this.gui
 	}
 }

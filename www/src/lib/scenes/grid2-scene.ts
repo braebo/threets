@@ -10,13 +10,13 @@ let grid = {} as {
 
 const ctrls = {
 	speed: 0.001,
-	scale: 1, // Scale factor for converting dB to amplitude.
+	scale: 0.1, // Scale factor for converting dB to amplitude.
 	waves: 0.01, // Wave effect amplitude.
 	audio: 0.2, // Audio spectrum influence.
 	center: 1, // Center gravity influence.
 	padding: 0.25, // Pinch the x-axis.
 	falloff: 2, // The falloff factor for the center gravity.
-	smoothing: 5, // The smoothing function's divisor.
+	smoothing: 2, // The smoothing function's divisor.
 	size: 100, // The width/height of the grid.
 	step: 2, // Grid resolution (distance between vertices).
 }
@@ -79,15 +79,11 @@ void main() {
    fragColor = vec4(color, 1.0);
 }`,
 	})
-	// const orbit_controller = new OrbitController(stage, {
-	// 	speed: 2,
-	// 	target: new Vector3(1, 5, 5),
-	// })
+
 	const wasd_controller = new WASDController(stage, {
 		speed: 1,
 		exclude: ['arrowup', 'arrowdown'],
 	})
-	stage.addSimpleQuad()
 
 	grid = await createGrid(stage)
 
@@ -327,7 +323,9 @@ async function createGui(stage: Stage) {
 	const gui = new Gui({
 		position: 'center',
 	})
-	await stage.camera.addGui(gui, { title: 'camera', closed: true })
+
+	await stage.camera.addGui(gui, { closed: true })
+	const gridGui = await grid.geometry.addGui(gui, { title: 'grid' })
 
 	const animFolder = gui.addFolder('animation')
 	animFolder.addNumber(ctrls, 'speed', {
@@ -347,8 +345,8 @@ async function createGui(stage: Stage) {
 	})
 	animFolder.addNumber(ctrls, 'audio', {
 		min: 0,
-		max: 20,
-		step: 1,
+		max: 1,
+		step: 0.01,
 	})
 	animFolder.addNumber(ctrls, 'padding', {
 		min: 0,
@@ -362,14 +360,13 @@ async function createGui(stage: Stage) {
 	})
 	animFolder.addNumber(ctrls, 'smoothing', {
 		min: 0,
-		max: 100,
+		max: 5,
 		step: 0.01,
 	})
 
-	const gridFolder = gui.addFolder('grid')
-
-	gridFolder
+	gridGui.folder
 		.addNumber(ctrls, 'size', {
+			order: -2,
 			min: 4,
 			max: 500,
 			step: 1,
@@ -378,8 +375,9 @@ async function createGui(stage: Stage) {
 			grid = await createGrid(stage)
 		})
 
-	gridFolder
+	gridGui.folder
 		.addNumber(ctrls, 'step', {
+			order: -1,
 			min: 1,
 			max: 20,
 			step: 1,
