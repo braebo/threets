@@ -49,6 +49,12 @@ export type UniformOptions<T extends UniformValueType = UniformValueType> = {
 	 * on each update.
 	 */
 	value: UniformValue<T> | (() => UniformValue<T>)
+
+	/**
+	 * If `true`, the uniform will be updated automatically on each frame.
+	 * @default true
+	 */
+	autoUpdate?: boolean
 }
 
 export class Uniform<const T extends UniformValueType = UniformValueType> {
@@ -56,8 +62,10 @@ export class Uniform<const T extends UniformValueType = UniformValueType> {
 	type: T
 	location: WebGLUniformLocation
 
-	private _value: UniformValue<T>
+	autoUpdate = true
 	dirty = true
+
+	private _value: UniformValue<T>
 
 	/**
 	 * If a function was provided for {@link UniformOptions.value}, it's stored here. Calling this
@@ -87,6 +95,7 @@ export class Uniform<const T extends UniformValueType = UniformValueType> {
 		this.name = options.name
 		this.type = options.type
 		this.location = stage.gl!.getUniformLocation(stage.program!, options.name)!
+		if (options.autoUpdate === false) this.autoUpdate = false
 
 		if (!this.location && this.location !== 0) {
 			console.warn(
@@ -107,7 +116,7 @@ export class Uniform<const T extends UniformValueType = UniformValueType> {
 			this.getValue = () => this.value
 		}
 
-		this.update = newValue => {
+		this.update = (newValue) => {
 			if (!this.location) return
 			const v = newValue ?? this.getValue()
 			// Only update if the value has changed (dirty will be set to true in the setter).

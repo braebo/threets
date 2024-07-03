@@ -135,9 +135,12 @@ void main() {
 
 		//* Setup WebGL Context
 
-		const gl = this.canvas.getContext('webgl2')
+		const gl = this.canvas.getContext('webgl2', { alpha: true , antialias: true })
 		if (!gl) throw new Error('WebGL2 not supported')
 		this.gl = gl
+
+		gl.enable(gl.BLEND)
+		gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
 		//* Setup Shaders
 
@@ -200,7 +203,7 @@ void main() {
 
 	update() {
 		for (const uniform of this.uniforms.values()) {
-			uniform.update()
+			if (uniform.autoUpdate) uniform.update()
 		}
 		this._emitOnUpdate()
 	}
