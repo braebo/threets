@@ -21,6 +21,10 @@ export interface GeometryOptions {
 	 */
 	indices?: Uint16Array
 	/**
+	 * The vertex uvs data. (optional)
+	 */
+	uvs?: Float32Array
+	/**
 	 * The rendering method to use when drawing the geometry.
 	 * @default gl.TRIANGLES
 	 */
@@ -82,6 +86,9 @@ export class Geometry {
 
 	_positions: Float32Array
 	indices?: Uint16Array
+	private _uvs: Float32Array
+	uvBuffer: WebGLBuffer | null = null
+
 	mode: GLMode
 	/**
 	 * The number of components per vertex attribute.
@@ -146,6 +153,14 @@ export class Geometry {
 			})
 		}
 
+		this._uvs = options.uvs || new Float32Array()
+
+		// Create UV buffer
+		this.uvBuffer = this.gl.createBuffer()
+		if (!this.uvBuffer) {
+			throw new Error('❌ Failed to create UV buffer')
+		}
+
 		if (this.isStatic) {
 			this.setupVAO()
 		} else {
@@ -153,6 +168,21 @@ export class Geometry {
 		}
 
 		this.gl.bindVertexArray(null)
+	}
+
+	get uvs() {
+		return this._uvs
+	}
+	set uvs(uvs: Float32Array) {
+		if (this.isStatic) {
+			throw new Error('❌ set Geometry.uvs - Attempted to update static Geometry UVs.')
+		}
+		this._uvs = uvs
+		// Update the UV buffer data
+		if (this.uvBuffer) {
+			this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.uvBuffer)
+			this.gl.bufferData(this.gl.ARRAY_BUFFER, uvs, this.gl.STATIC_DRAW)
+		}
 	}
 
 	beforeRender = (): void => {
@@ -192,6 +222,15 @@ export class Geometry {
 				this.offset,
 			)
 			this.gl.enableVertexAttribArray(this.location)
+
+			// Set up UV attribute
+			if (this.uvBuffer && this._uvs.length > 0) {
+				const uvLocation = this.gl.getAttribLocation(this.program, 'a_uv')
+				this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.uvBuffer)
+				this.gl.bufferData(this.gl.ARRAY_BUFFER, this._uvs, this.gl.STATIC_DRAW)
+				this.gl.vertexAttribPointer(uvLocation, 2, this.gl.FLOAT, false, 0, 0)
+				this.gl.enableVertexAttribArray(uvLocation)
+			}
 
 			if (this.indices) {
 				const indexBuffer = this.gl.createBuffer()!
@@ -237,7 +276,9 @@ export class Geometry {
 		this.updateModelMatrix()
 
 		if (this.indices) {
-			this.gl.drawElements(this.mode, this.indices.length, this.gl.UNSIGNED_SHORT, 0)
+			this.gl.drawElements(this.mode, this.indices.length, this.gl.UNSIGNED_SHORT, 0) // temp remove
+			// this.gl.drawElements(this.gl.LINES, this.indices.length, this.gl.UNSIGNED_SHORT, 0) // temp add
+			// this.gl.drawElements(this.gl.TRIANGLES, this.indices.length, this.gl.UNSIGNED_SHORT, 0) // temp add
 		} else {
 			this.gl.drawArrays(this.mode, 0, this.vertexCount)
 		}
